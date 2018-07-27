@@ -23,17 +23,15 @@ Lemma mul_mx_rowfree_eq0 (K : fieldType) (m n p: nat)
 Proof. by move=> free; rewrite -!mxrank_eq0 mxrankMfree ?mxrank_eq0. Qed.
 
 Lemma sub_sums_genmxP (F : fieldType) (I : finType) (P : pred I) (m n : nat)
- (A : 'M[F]_(m, n)) (B_ : I -> 'M_(m, n)) :
-reflect (exists u_ : I -> 'M_m, A = \sum_(i | P i) u_ i *m B_ i)
-  (A <= \sum_(i | P i) <<B_ i>>)%MS.
+  (A : 'M[F]_(m, n)) (B_ : I -> 'M_(m, n)) :
+  reflect (exists u_ : I -> 'M_m, A = \sum_(i | P i) u_ i *m B_ i)
+    (A <= \sum_(i | P i) <<B_ i>>)%MS.
 Proof.
-apply: (iffP idP); last first.
-  by move=> [u_ ->]; rewrite summx_sub_sums // => i _; rewrite genmxE submxMl.
-move=> /sub_sumsmxP [u_ hA].
-have Hu i : exists v, u_ i *m  <<B_ i>>%MS = v *m B_ i.
-  by apply/submxP; rewrite (submx_trans (submxMl _ _)) ?genmxE.
-exists (fun i => projT1 (sig_eqW (Hu i))); rewrite hA.
-by apply: eq_bigr => i /= P_i; case: sig_eqW.
+apply: (iffP idP) => [/sub_sumsmxP [u_ A_def]|[u_ ->]]; last first.
+  by rewrite summx_sub_sums // => i _; rewrite genmxE submxMl.
+suff /all_tag[v_ v_eq] :  forall i, {v | u_ i *m  <<B_ i>>%MS = v *m B_ i}.
+  by exists v_; rewrite A_def (eq_bigr _ (fun _ _ => v_eq _)).
+by move=> i; apply/sig_eqW/submxP; rewrite (submx_trans (submxMl _ _)) ?genmxE.
 Qed.
 
 Lemma mulmxP (K : fieldType) (m n : nat) (A B : 'M[K]_(m, n)) :
