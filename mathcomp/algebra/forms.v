@@ -484,10 +484,6 @@ Proof. by rewrite /orthogonal /= andbT. Qed.
 
 End HermitianModuleTheory.
 
-Hint Extern 0 (Hermitian.map _ _ _) =>
-  match goal with form : Hermitian.map _ _ _ |- _ => exact form end : core.
-(* in order to use thetaK *)
-
 Notation "{ 'in' D , 'isometry' tau , 'to' R }" :=
     (isometry_from_to (mem D) tau (mem R))
   (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }")
@@ -518,112 +514,112 @@ Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
 
 Let alpha v := (linfun (applyr form v : vT -> F^o)).
 
-Definition rad V := (\bigcap_(i < \dim V) lker (alpha (vbasis V)`_i))%VS.
+Definition orthov V := (\bigcap_(i < \dim V) lker (alpha (vbasis V)`_i))%VS.
 
-Local Notation "U _|_ V" := (U <= rad V)%VS : vspace_scope.
+Local Notation "U _|_ V" := (U <= orthov V)%VS : vspace_scope.
 
-Lemma mem_radPn V u : reflect (exists2 v, v \in V & '[u, v] != 0) (u \notin rad V).
+Lemma mem_orthovPn V u : reflect (exists2 v, v \in V & '[u, v] != 0) (u \notin orthov V).
 Proof.
-apply: (iffP idP) => [u_radV|[v /coord_vbasis-> uvNortho]]; last first.
-  apply/subv_bigcapP => uP; rewrite linear_sum big1 ?eqxx //= in uvNortho.
+apply: (iffP idP) => [u_orthovV|[v /coord_vbasis-> uvNorthov]]; last first.
+  apply/subv_bigcapP => uP; rewrite linear_sum big1 ?eqxx //= in uvNorthov.
   move=> i _; have := uP i isT.
   by rewrite -memvE memv_ker lfunE linearZ => /eqP/=->; rewrite mulr0.
 suff /existsP [i ui_neq0] : [exists i : 'I_(\dim V), '[u, (vbasis V)`_i] != 0].
   by exists (vbasis V)`_i => //; rewrite vbasis_mem ?mem_nth ?size_tuple.
-apply: contraNT u_radV; rewrite negb_exists => /forallP ui_eq0.
+apply: contraNT u_orthovV; rewrite negb_exists => /forallP ui_eq0.
 by apply/subv_bigcapP => i _; rewrite -memvE memv_ker lfunE /= -[_ == _]negbK.
 Qed.
 
-Lemma mem_radP V u : reflect {in V, forall v, '[u, v] = 0} (u \in rad V).
+Lemma mem_orthovP V u : reflect {in V, forall v, '[u, v] = 0} (u \in orthov V).
 Proof.
-apply: (iffP idP) => [/mem_radPn orthoNu v vV|/(_ _ _)/eqP ortho_u].
-  by apply/eqP/negP=> /negP Northo_uv; apply: orthoNu; exists v.
-by apply/mem_radPn => -[v /ortho_u->].
+apply: (iffP idP) => [/mem_orthovPn orthovNu v vV|/(_ _ _)/eqP orthov_u].
+  by apply/eqP/negP=> /negP Northov_uv; apply: orthovNu; exists v.
+by apply/mem_orthovPn => -[v /orthov_u->].
 Qed.
 
-Lemma rad1E u : rad <[u]> = lker (alpha u).
+Lemma orthov1E u : orthov <[u]> = lker (alpha u).
 Proof.
 apply/eqP; rewrite eqEsubv; apply/andP.
 split; apply/subvP=> v; rewrite memv_ker lfunE /=.
-   by move=> /mem_radP-> //; rewrite ?memv_line.
-move=> vu_eq0; apply/mem_radP => w /vlineP[k->].
+   by move=> /mem_orthovP-> //; rewrite ?memv_line.
+move=> vu_eq0; apply/mem_orthovP => w /vlineP[k->].
 by apply/eqP; rewrite linearZ mulf_eq0 vu_eq0 orbT.
 Qed.
 
-Lemma orthoP U V : reflect {in U & V, forall u v, '[u, v] = 0} (U _|_ V)%VS.
+Lemma orthovP U V : reflect {in U & V, forall u v, '[u, v] = 0} (U _|_ V)%VS.
 Proof.
-apply: (iffP subvP); first by move=> /(_ _ _)/mem_radP; move=> H ????; apply: H.
-by move=> H ??; apply/mem_radP=> ??; apply: H.
+apply: (iffP subvP); last by move=> H ??; apply/mem_orthovP=> ??; apply: H.
+by move=> /(_ _ _)/mem_orthovP; move=> H ????; apply: H.
 Qed.
 
-Lemma ortho_sym U V : (U _|_ V)%VS = (V _|_ U)%VS.
-Proof. by apply/orthoP/orthoP => eq0 ????; apply/eqP; rewrite herm_eq0C eq0. Qed.
+Lemma orthov_sym U V : (U _|_ V)%VS = (V _|_ U)%VS.
+Proof. by apply/orthovP/orthovP => eq0 ????; apply/eqP; rewrite herm_eq0C eq0. Qed.
 
-Lemma mem_rad1 v u : (u \in rad <[v]>) = ('[u, v] == 0).
-Proof. by rewrite rad1E memv_ker lfunE. Qed.
+Lemma mem_orthov1 v u : (u \in orthov <[v]>) = ('[u, v] == 0).
+Proof. by rewrite orthov1E memv_ker lfunE. Qed.
 
-Lemma ortho11 u v : (<[u]> _|_ <[v]>)%VS = ('[u, v] == 0).
-Proof. exact: mem_rad1. Qed.
+Lemma orthov11 u v : (<[u]> _|_ <[v]>)%VS = ('[u, v] == 0).
+Proof. exact: mem_orthov1. Qed.
 
-Lemma mem_rad1_sym v u : (u \in rad <[v]>) = (v \in rad <[u]>).
-Proof. exact: ortho_sym. Qed.
+Lemma mem_orthov1_sym v u : (u \in orthov <[v]>) = (v \in orthov <[u]>).
+Proof. exact: orthov_sym. Qed.
 
-Lemma rad0 : rad 0 = fullv.
+Lemma orthov0 : orthov 0 = fullv.
 Proof.
 apply/eqP; rewrite eqEsubv subvf.
-by apply/subvP => x _; rewrite mem_rad1 linear0.
+by apply/subvP => x _; rewrite mem_orthov1 linear0.
 Qed.
 
-Lemma mem_rad_sym V u : (u \in rad V) = (V <= rad <[u]>)%VS.
-Proof. exact: ortho_sym. Qed.
+Lemma mem_orthov_sym V u : (u \in orthov V) = (V <= orthov <[u]>)%VS.
+Proof. exact: orthov_sym. Qed.
 
-Lemma leq_dim_rad1 u V : ((\dim V).-1 <= \dim (V :&: rad <[u]>))%N.
+Lemma leq_dim_orthov1 u V : ((\dim V).-1 <= \dim (V :&: orthov <[u]>))%N.
 Proof.
-rewrite -(limg_ker_dim (alpha u) V) -rad1E.
+rewrite -(limg_ker_dim (alpha u) V) -orthov1E.
 have := dimvS (subvf (alpha u @: V)); rewrite dim_regular addnC.
 by case: (\dim _) => [|[]] // _; rewrite leq_pred.
 Qed.
 
-Lemma dim_img_form_eq1 u V : u \notin rad V -> \dim (alpha u @: V)%VS = 1%N.
+Lemma dim_img_form_eq1 u V : u \notin orthov V -> \dim (alpha u @: V)%VS = 1%N.
 Proof.
-move=> /mem_radPn [v vV Northo_uv]; apply/eqP; rewrite eqn_leq /=.
+move=> /mem_orthovPn [v vV Northov_uv]; apply/eqP; rewrite eqn_leq /=.
 rewrite -[1%N as X in (_ <= X)%N](dim_regular F) dimvS ?subvf//=.
 have := @dimvS _ _ <['[v, u] : F^o]> (alpha u @: V).
-rewrite -memvE dim_vline herm_eq0C Northo_uv; apply.
+rewrite -memvE dim_vline herm_eq0C Northov_uv; apply.
 by apply/memv_imgP; exists v; rewrite ?memvf// !lfunE /=.
 Qed.
 
-Lemma eq_dim_rad1 u V : u \notin rad V -> (\dim V).-1 = \dim (V :&: rad <[u]>).
+Lemma eq_dim_orthov1 u V : u \notin orthov V -> (\dim V).-1 = \dim (V :&: orthov <[u]>).
 Proof.
 rewrite -(limg_ker_dim (alpha u) V) => /dim_img_form_eq1->.
-by rewrite -rad1E addn1.
+by rewrite -orthov1E addn1.
 Qed.
 
-Lemma dim_img_form_eq0 u V : u \in rad V -> \dim (alpha u @: V)%VS = 0%N.
-Proof. by move=> uV; apply/eqP; rewrite dimv_eq0 -lkerE -rad1E ortho_sym. Qed.
+Lemma dim_img_form_eq0 u V : u \in orthov V -> \dim (alpha u @: V)%VS = 0%N.
+Proof. by move=> uV; apply/eqP; rewrite dimv_eq0 -lkerE -orthov1E orthov_sym. Qed.
 
-Lemma neq_dim_rad1 u V : (\dim V > 0)%N ->
-  u \in rad V -> ((\dim V).-1 < \dim (V :&: rad <[u]>))%N.
+Lemma neq_dim_orthov1 u V : (\dim V > 0)%N ->
+  u \in orthov V -> ((\dim V).-1 < \dim (V :&: orthov <[u]>))%N.
 Proof.
-move=> V_gt0; rewrite -(limg_ker_dim (alpha u) V) -rad1E => u_in.
-rewrite dim_img_form_eq0 // addn0 (capv_idPl _) 1?ortho_sym //.
+move=> V_gt0; rewrite -(limg_ker_dim (alpha u) V) -orthov1E => u_in.
+rewrite dim_img_form_eq0 // addn0 (capv_idPl _) 1?orthov_sym //.
 by case: (\dim _) V_gt0.
 Qed.
 
-Lemma leqif_dim_rad1 u V : (\dim V > 0)%N ->
-   ((\dim V).-1 <= \dim (V :&: rad <[u]>) ?= iff (u \notin rad V))%N.
+Lemma leqif_dim_orthov1 u V : (\dim V > 0)%N ->
+   ((\dim V).-1 <= \dim (V :&: orthov <[u]>) ?= iff (u \notin orthov V))%N.
 Proof.
 move=> Vr_gt0; apply/leqifP.
-by case: (boolP (u \in _)) => /= [/neq_dim_rad1->|/eq_dim_rad1->].
+by case: (boolP (u \in _)) => /= [/neq_dim_orthov1->|/eq_dim_orthov1->].
 Qed.
 
-Lemma leqif_dim_rad1_full u : (n > 0)%N ->
-   ((\dim {:vT}).-1 <= \dim (rad <[u]>) ?= iff (u \notin rad fullv))%N.
+Lemma leqif_dim_orthov1_full u : (n > 0)%N ->
+   ((\dim {:vT}).-1 <= \dim (orthov <[u]>) ?= iff (u \notin orthov fullv))%N.
 Proof.
-by move=> n_gt0; have := @leqif_dim_rad1 u fullv; rewrite capfv; apply.
+by move=> n_gt0; have := @leqif_dim_orthov1 u fullv; rewrite capfv; apply.
 Qed.
 
-(* Link between rad and orthogonality of sequences *)
+(* Link between orthov and orthovgonality of sequences *)
 Lemma orthogonal1P u v : reflect ('[u, v] = 0) (orthogonal form [:: u] [:: v]).
 Proof. by rewrite /orthogonal /= !andbT; apply: eqP. Qed.
 
@@ -636,17 +632,25 @@ Qed.
 
 Lemma orthogonalE us vs : (orthogonal form us vs) = (<<us>> _|_ <<vs>>)%VS.
 Proof.
-apply/orthogonalP/orthoP => uvsP u v; last first.
+apply/orthogonalP/orthovP => uvsP u v; last first.
   by move=> uus vvs; rewrite uvsP // memv_span.
 rewrite -[us]in_tupleE -[vs]in_tupleE => /coord_span-> /coord_span->.
 rewrite linear_sum big1 //= => i _; rewrite linear_suml big1 //= => j _.
 by rewrite linearZ /= linearZl_LR/= uvsP ?mulr0// mem_nth.
 Qed.
 
-Lemma orthoE U V : (U _|_ V)%VS = orthogonal form (vbasis U) (vbasis V).
+Lemma orthovE U V : (U _|_ V)%VS = orthogonal form (vbasis U) (vbasis V).
 Proof. by rewrite orthogonalE !(span_basis (vbasisP _)). Qed.
 
-Definition nondegenerate := rad fullv == 0%VS.
+Notation radv := (orthov fullv).
+
+Lemma orthoDv U V W : (U + V _|_ W)%VS = (U _|_ W)%VS && (V _|_ W)%VS.
+Proof. by rewrite subv_add. Qed.
+
+Lemma orthovD U V W : (U _|_ V + W)%VS = (U _|_ V)%VS && (U _|_ W)%VS.
+Proof. by rewrite ![(U _|_ _)%VS]orthov_sym orthoDv. Qed.
+
+Definition nondegenerate := radv == 0%VS.
 Definition is_symplectic := [/\ nondegenerate, is_skew form &
                                 2 \in [char F] -> forall u, '[u, u] = 0].
 Definition is_orthogonal := [/\ nondegenerate, is_sym form &
@@ -895,20 +899,20 @@ Canonical form_of_matrix_hermitian := Hermitian form_of_matrix_is_hermitian.
 
 Local Notation "''[' u , v ]" := (form_of_matrix theta M u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
-Local Notation "B ^_|_" := (orthomx theta M B) : ring_scope.
-Local Notation "A _|_ B" := (A%MS <= B^_|_)%MS : ring_scope.
+Local Notation "B ^_|_" := (orthomx theta M B) : matrix_set_scope.
+Local Notation "A _|_ B" := (A%MS <= B%MS^_|_)%MS : matrix_set_scope.
 
-Lemma orthomxE u v : (u _|_ v) = ('[u, v] == 0).
+Lemma orthomxE u v : (u _|_ v)%MS = ('[u, v] == 0).
 Proof.
 by rewrite (sameP sub_kermxP eqP) mulmxA [_ *m _^t _]mx11_scalar fmorph_eq0.
 Qed.
 
-Lemma hermmx_eq0P {u v} : reflect ('[u, v] = 0) (u _|_ v).
+Lemma hermmx_eq0P {u v} : reflect ('[u, v] = 0) (u _|_ v)%MS.
 Proof. by rewrite orthomxE; apply/eqP. Qed.
 
 Lemma orthomxP p q (A : 'M_(p, n)) (B :'M_(q, n)) :
-  reflect (forall (u v : 'rV_n), (u <= A)%MS -> (v <= B)%MS -> u _|_ v)
-          (A _|_ B).
+  reflect (forall (u v : 'rV_n), u <= A -> v <= B -> u _|_ v)%MS
+          (A _|_ B)%MS.
 Proof.
 apply: (iffP idP) => AnB.
   move=> u v uA vB; rewrite (submx_trans uA) // (submx_trans AnB) //.
@@ -926,19 +930,20 @@ apply: (can_inj (@trmxK _ _ _)); rewrite trmx0 trmx_mul trmxK.
 by rewrite -(map_delta_mx theta) map_trmx Hv.
 Qed.
 
-Lemma orthomxC p q (A : 'M_(p, n)) (B :'M_(q, n)) : (A _|_ B) = (B _|_ A).
+Lemma orthomx_sym p q (A : 'M_(p, n)) (B :'M_(q, n)) :
+  (A _|_ B)%MS = (B _|_ A)%MS.
 Proof.
-gen have nC : p q A B / A _|_ B -> B _|_ A; last by apply/idP/idP; apply/nC.
+gen have nC : p q A B / (A _|_ B -> B _|_ A)%MS; last by apply/idP/idP; apply/nC.
 move=> AnB; apply/orthomxP => u v ? ?; rewrite orthomxE.
 rewrite hermC mulf_eq0 ?fmorph_eq0 ?signr_eq0 /=.
 by rewrite -orthomxE (orthomxP _ _ AnB).
 Qed.
 
-Lemma orthomx_ortho_mx p (A : 'M_(p, n)) : ((A^_|_) _|_ A).
+Lemma ortho_ortho_mx p (A : 'M_(p, n)) : ((A^_|_) _|_ A)%MS.
 Proof. by []. Qed.
 
-Lemma orthomx_mx_ortho p (A : 'M_(p, n)) : (A _|_ (A^_|_)).
-Proof. by rewrite orthomxC. Qed.
+Lemma ortho_mx_ortho p (A : 'M_(p, n)) : (A _|_ (A^_|_))%MS.
+Proof. by rewrite orthomx_sym. Qed.
 
 Lemma rank_orthomx u : (\rank (u ^_|_) >= n.-1)%N.
 Proof.
@@ -946,10 +951,44 @@ rewrite mxrank_ker -subn1 leq_sub2l //.
 by rewrite (leq_trans (mxrankM_maxr  _ _)) // rank_leq_col.
 Qed.
 
-Definition radmx := 1%:M^_|_.
+Notation radmx := (1%:M^_|_)%MS.
 
-Lemma radmx_ker : radmx = kermx M.
-Proof. by rewrite /radmx /orthomx trmx1 map_mx1 mulmx1. Qed.
+Lemma radmxE : radmx = kermx M.
+Proof. by rewrite /orthomx /orthomx trmx1 map_mx1 mulmx1. Qed.
+
+Lemma orthoNmx k m (A : 'M[R]_(k, n)) (B : 'M[R]_(m, n)) :
+  ((- A) _|_ B)%MS = (A _|_ B)%MS.
+Proof. by rewrite eqmx_opp. Qed.
+
+Lemma orthomxN k m (A : 'M[R]_(k, n)) (B : 'M[R]_(m, n)) :
+  (A _|_ (- B))%MS = (A _|_ B)%MS.
+Proof. by rewrite ![(A _|_ _)%MS]orthomx_sym orthoNmx. Qed.
+
+Lemma orthoDmx k m p (A : 'M[R]_(k, n)) (B : 'M[R]_(m, n)) (C : 'M[R]_(p, n)) :
+  (A + B _|_ C)%MS = (A _|_ C)%MS && (B _|_ C)%MS.
+Proof. by rewrite addsmxE !(sameP sub_kermxP eqP) mul_col_mx col_mx_eq0. Qed.
+
+Lemma orthomxD  k m p (A : 'M[R]_(k, n)) (B : 'M[R]_(m, n)) (C : 'M[R]_(p, n)) :
+  (A _|_ B + C)%MS = (A _|_ B)%MS && (A _|_ C)%MS.
+Proof. by rewrite ![(A _|_ _)%MS]orthomx_sym orthoDmx. Qed.
+
+Lemma orthoZmx p m a (A : 'M[R]_(p, n)) (B : 'M[R]_(m, n)) : a != 0 ->
+  (a *: A _|_ B)%MS = (A _|_ B)%MS.
+Proof. by move=> a_neq0; rewrite eqmx_scale. Qed.
+
+Lemma orthomxZ p m a (A : 'M[R]_(p, n)) (B : 'M[R]_(m, n)) : a != 0 ->
+  (A _|_ (a *: B))%MS = (A _|_ B)%MS.
+Proof. by move=> a_neq0; rewrite ![(A _|_ _)%MS]orthomx_sym orthoZmx. Qed.
+
+Lemma eqmx_ortho p m (A : 'M[R]_(p, n)) (B : 'M[R]_(m, n)) :
+  (A :=: B)%MS -> (A^_|_ :=: B^_|_)%MS.
+Proof.
+move=> eqAB; apply/eqmxP.
+by rewrite orthomx_sym -eqAB ortho_mx_ortho orthomx_sym eqAB ortho_mx_ortho.
+Qed.
+
+Lemma genmx_ortho p (A : 'M[R]_(p, n)) : (<<A>>^_|_ :=: A^_|_)%MS.
+Proof. exact: (eqmx_ortho (genmxE _)). Qed.
 
 End HermitianMxTheory.
 End HermitianMx.
@@ -958,142 +997,3 @@ End MatrixForms.
 Notation symmetricmx := (hermitianmx _ false idfun).
 Notation skewmx := (hermitianmx _ true idfun).
 Notation hermsymmx := (hermitianmx _ false (@conjC _)).
-
-(* Section TEST_classfun. *)
-(* From mathcomp Require Import classfun. *)
-
-(* Canonical rev_cfdot (gT : finGroupType) (B : {set gT}) := *)
-(*   @RevOp _ _ _ (@cfdotr_head gT B tt) *)
-(*   (@cfdot gT B) (fun _ _ => erefl). *)
-
-(* Section Cfdot. *)
-(* Variables (gT : finGroupType) (G : {group gT}). *)
-(* Lemma cfdot_is_linear xi : linear_for (@conjC _ \; *%R) (cfdot xi : 'CF(G) -> algC^o). *)
-(* Proof. *)
-(* move=> /= a phi psi; rewrite cfdotC -cfdotrE linearD linearZ /=. *)
-(* by rewrite !['[_, xi]]cfdotC rmorphD rmorphM !conjCK. *)
-(* Qed. *)
-(* Canonical cfdot_additive xi := Additive (cfdot_is_linear xi). *)
-(* Canonical cfdot_linear xi := Linear (cfdot_is_linear xi). *)
-(* Canonical cfdot_bilinear := [bilinear of @cfdot gT G]. *)
-
-(* Lemma cfdotC_subproof (phi psi : 'CF(G)) : '[phi, psi] = (-1) ^+ false * ('[psi, phi])^*. *)
-(* Proof. by rewrite mul1r cfdotC. Qed. *)
-
-(* Definition cfdot_is_hermitian : hermitian_for false conjC (@cfdot gT G). *)
-(* Proof. by move=> *; rewrite mul1r cfdotC. Qed. *)
-(* Canonical cfdot_hermsym := Hermitian cfdot_is_hermitian. *)
-
-(* Definition cfdot_is_dot : is_dot (@cfdot gT G). *)
-(* Proof. by move=> phi phi_neq0; rewrite cfnorm_gt0. Qed. *)
-(* Canonical cfdot_dot := Dot cfdot_is_dot. *)
-
-(* Section examples. *)
-
-(* Lemma cfdot0l P (xi xi1 xi2 : 'CF(G)) : P '[xi1 + xi2, xi]. *)
-(* Proof. rewrite linearDl /=. Abort. *)
-
-(* Lemma cfCauchySchwarz (phi psi : 'CF(G)) : *)
-(*   `|'[phi, psi]| ^+ 2 <= '[phi] * '[psi] ?= iff ~~ free (phi :: psi). *)
-(* Proof. *)
-(* exact: CauchySchwarz. *)
-(* Abort. *)
-
-(* End examples. *)
-(* End Cfdot. *)
-
-(* End TEST_classfun. *)
-
-(* Section ClassificationForm. *)
-
-(* Variables (F : fieldType) (L : fieldExtType) (theat : 'Aut()) *)
-
-(* Notation "''[' u , v ]_ M" := (form M%R u%R v%R) : ring_scope. *)
-(* Notation "''[' u ]_ M" := (form M%R u%R u%R) : ring_scope. *)
-
-(* Hypothesis (thetaK : involutive theta). *)
-
-(* Lemma sesqui_test M : (forall u v, '[v, u]_M = 0 -> '[u, v]_M = 0) -> *)
-(*                       {eps | eps^+2 = 1 & M \is (eps,theta).-sesqui}. *)
-(* Proof. *)
-(* pose  *)
-
-(*                       [/\ forall u, '[u] = 0, theta =1 id & eps = -1] *)
-(*                       \/ ((exists u, '[u] != 0) /\ (eps = 1)). *)
-(* Proof. *)
-(* move=> M_neq0 form_eq0. *)
-(* have [] := boolP [forall i : 'I_n, '['e_i] == 0]; last first. *)
-(*   rewrite negb_forall => /existsP [i ei_neq0]. *)
-(*   right; split; first by exists ('e_i). *)
-(*   apply/eqP; *)
-
-(*  contraT *)
-
-(* suff [f_eq0|] : (forall u, '[u] = 0) \/ (exists u, '[u] != 0). *)
-(*   left; split=> //. *)
-
-(* have [] := boolP [forall i : 'I_n, '['e_i] == 0]. *)
-
-(* suff /eqP : eps ^+ 2 = 1. *)
-(*   rewrite -subr_eq0 subr_sqr_1 mulf_eq0. *)
-(*   move => /orP[]; rewrite addr_eq0 ?opprK=> /eqP eps_eq. *)
-(*     right; split=> //. *)
-
-(* have [] := boolP [forall i : 'I_n, '['e_i] == 0]. *)
-
-(* have := sesquiC u u. *)
-
-(* rewrite !linearZ /= -[eps *: _ *m _]/(mulmxr _ _) linearZ /= mxE; congr (_ * _). *)
-(* have : u = map_mx theta (map_mx theta u). *)
-(*   apply/rowP=> i; rewrite !mxE. *)
-(* rewrite -[in LHS]mulmxA -map_mxM. *)
-(* rewrite  *)
-(*  !mxE rmorph_sum; apply: eq_bigr => /= i _; rewrite !mxE. *)
-(* rewrite !rmorphM thetaK rmorph_sum. *)
-
-(* Hypothesis (M_sesqui : M \is (eps, theta).-sesqui). *)
-
-(* rewrite -[a *: u *m _]/(mulmxr _ _). *)
-(* rewrite linearZ. *)
-
-(* Variables (R : fieldType) (n : nat). *)
-
-(* Local Notation "A _|_ B" := (A%MS <= kermx B%MS^T)%MS. *)
-
-(* Lemma orthomx_sym k m (A : 'M[R]_(k,n)) (B : 'M[R]_(m,n)) : *)
-(*   A _|_ B = B _|_ A. *)
-(* Proof. *)
-(* rewrite !(sameP sub_kermxP eqP) -{1}[A]trmxK -trmx_mul. *)
-(* by rewrite -{1}trmx0 (inj_eq (@trmx_inj _ _ _)). *)
-(* Qed. *)
-
-(* Lemma orthomxNm k m (A : 'M[R]_(k,n)) (B : 'M[R]_(m,n)) : (- A) _|_ B = A _|_ B. *)
-(* Proof. by rewrite eqmx_opp. Qed. *)
-
-(* Lemma orthomxmN k m (A : 'M[R]_(k,n)) (B : 'M[R]_(m,n)) : A _|_ (- B) = A _|_ B. *)
-(* Proof. by rewrite ![A _|_ _]orthomx_sym orthomxNm. Qed. *)
-
-(* Lemma orthomxDm k m p (A : 'M[R]_(k,n)) (B : 'M[R]_(m,n)) (C : 'M[R]_(p,n)) : *)
-(*   (A + B _|_ C) = (A _|_ C) && (B _|_ C). *)
-(* Proof. by rewrite addsmxE !(sameP sub_kermxP eqP) mul_col_mx col_mx_eq0. Qed. *)
-
-(* Lemma orthomxmD  k m p (A : 'M[R]_(k,n)) (B : 'M[R]_(m,n)) (C : 'M[R]_(p,n)) : *)
-(*   (A _|_ B + C) = (A _|_ B) && (A _|_ C). *)
-(* Proof. by rewrite ![A _|_ _]orthomx_sym orthomxDm. Qed. *)
-
-(* Definition dot (u v : 'rV[R]_n) : R := (u *m v^T) 0 0. *)
-
-(* Notation "''[' u , v ]" := (dot u v) : ring_scope. *)
-(* Notation "''[' u ]" := '[u, u]%MS : ring_scope. *)
-
-(* Lemma dotmulE (u v : 'rV[R]_n) : '[u, v] = \sum_k u``_k * v``_k. *)
-(* Proof. by rewrite [LHS]mxE; apply: eq_bigr=> i; rewrite mxE. Qed. *)
-
-(* Lemma orthomxvv (u v : 'rV[R]_n) : (u _|_ v) = ('[u, v] == 0). *)
-(* Proof. by rewrite (sameP sub_kermxP eqP) [_ *m _^T]mx11_scalar fmorph_eq0. Qed. *)
-
-(* End Orthomx. *)
-
-(* Local Notation "''[' u , v ]" := (form u v) : ring_scope. *)
-(* Local Notation "''[' u ]" := '[u%R, u%R] : ring_scope. *)
-(* Local Notation "A _|_ B" := (A%MS <= kermx B%MS^T)%MS. *)
