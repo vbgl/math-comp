@@ -193,7 +193,7 @@ Canonical dotmx_bilinear n := [bilinear of @dotmx n as dotmx_def].
 Canonical dotmx_hermsym n := [hermitian of (@dotmx n) as dotmx_def].
 
 Lemma dotmxE n (u v : 'rV_n) : '[u, v] = (u *m v ^t*) 0 0.
-Proof. by rewrite /dotmx /form_of_matrix mulmx1. Qed.
+Proof. by rewrite /dotmx /form_of_matrix mulmx1 /= trace_mx11. Qed.
 
 Fact dotmx_is_dotmx n : is_dot (@dotmx n).
 Proof.

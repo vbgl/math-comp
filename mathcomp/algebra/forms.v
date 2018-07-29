@@ -3,7 +3,7 @@ Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq div choice fintype.
 From mathcomp
 Require Import tuple bigop ssralg finset fingroup zmodp poly ssrnum.
 From mathcomp
-Require Import matrix mxalgebra vector ssrnum.
+Require Import matrix mxalgebra vector.
 
 (* From mathcomp Require classfun. *)
 
@@ -767,12 +767,13 @@ Local Notation "M ^t phi" := (map_mx phi (M ^T)) (phi at level 30, at level 30).
 Section MatrixForms.
 
 Variables (R : fieldType) (n : nat).
-Implicit Types (a b : R) (u v : 'rV[R]_n) (M N P Q : 'M[R]_n).
+Implicit Types (a b : R) (u v : 'rV[R]_n).
+Implicit Types (M N P Q : 'M[R]_n).
 
 Section Def.
 Variable (theta : R -> R).
 
-Definition form_of_matrix M u v := (u *m M *m (v ^t theta)) 0 0.
+Definition form_of_matrix m M (U  V : 'M_(m, n)) := \tr (U *m M *m (V ^t theta)).
 Definition matrix_of_form (form : 'rV[R]_n -> 'rV[R]_n -> R) : 'M[R]_n :=
   \matrix_(i, j) form 'e_i 'e_j.
 Definition orthomx m M (B : 'M_(m,n)) : 'M_n := (kermx (M *m (B ^t theta))).
@@ -784,46 +785,58 @@ Proof. by rewrite mxE. Qed.
 End Def.
 
 Section FormOfMatrix.
+Variables (m : nat) (M : 'M[R]_n).
+Implicit Types (U V : 'M[R]_(m, n)).
+Variables (theta : {rmorphism R -> R}).
+
+Local Notation "''[' U , V ]" := (form_of_matrix theta M U%R V%R) : ring_scope.
+Local Notation "''[' U ]" := '[U, U]%R : ring_scope.
+
+Lemma form_of_matrix_is_linear U :
+  linear_for (theta \; *%R) (form_of_matrix theta M U).
+Proof.
+rewrite /form_of_matrix => k v w; rewrite -linearP/=.
+by rewrite linearP map_mxD map_mxZ !mulmxDr !scalemxAr.
+Qed.
+Canonical form_of_matrix_additive U := Additive (form_of_matrix_is_linear U).
+Canonical form_of_matrix_linear U := Linear (form_of_matrix_is_linear U).
+
+Definition form_of_matrixr U := (form_of_matrix theta M)^~U.
+Lemma form_of_matrixr_is_linear U : linear_for *%R (form_of_matrixr U).
+Proof.
+rewrite /form_of_matrixr /form_of_matrix => k v w.
+by rewrite -linearP /= !mulmxDl -!scalemxAl.
+Qed.
+Canonical form_of_matrixr_additive U := Additive (form_of_matrixr_is_linear U).
+Canonical form_of_matrixr_linear U := Linear (form_of_matrixr_is_linear U).
+Canonical form_of_matrixr_rev :=
+  [revop form_of_matrixr of form_of_matrix theta M].
+Canonical form_of_matrix_is_bilinear := [bilinear of form_of_matrix theta M].
+
+End FormOfMatrix.
+
+Section FormOfMatrix1.
 Variables (M : 'M[R]_n).
 Variables (theta : {rmorphism R -> R}).
 
 Local Notation "''[' u , v ]" := (form_of_matrix theta M u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
 
-Lemma form_of_matrix_is_linear u :
-  linear_for (theta \; *%R) (form_of_matrix theta M u).
-Proof.
-rewrite /form_of_matrix => k v w.
-by rewrite linearD map_mxD linearZ map_mxZ !mulmxDr -scalemxAr !mxE.
-Qed.
-Canonical form_of_matrix_additive u := Additive (form_of_matrix_is_linear u).
-Canonical form_of_matrix_linear u := Linear (form_of_matrix_is_linear u).
-
-Definition form_of_matrixr u := (form_of_matrix theta M)^~u.
-Lemma form_of_matrixr_is_linear u : linear_for *%R (form_of_matrixr u).
-Proof.
-rewrite /form_of_matrixr /form_of_matrix => k v w.
-by rewrite !mulmxDl -!scalemxAl !mxE.
-Qed.
-Canonical form_of_matrixr_additive u := Additive (form_of_matrixr_is_linear u).
-Canonical form_of_matrixr_linear u := Linear (form_of_matrixr_is_linear u).
-Canonical form_of_matrixr_rev :=
-  [revop form_of_matrixr of form_of_matrix theta M].
-Canonical form_of_matrix_is_bilinear := [bilinear of form_of_matrix theta M].
-
-Lemma formee i j : '['e_i, 'e_j] = M i j.
+Lemma formee i j : '['e_i :'rV__, 'e_j] = M i j.
 Proof.
 rewrite /form_of_matrix -rowE -map_trmx map_delta_mx -[M in LHS]trmxK.
-by rewrite -tr_col -trmx_mul -rowE !mxE.
+by rewrite -tr_col -trmx_mul -rowE trace_mx11 !mxE.
 Qed.
 
 Lemma form_of_matrixK : matrix_of_form (form_of_matrix theta M) = M.
 Proof. by apply/matrixP => i j; rewrite !mxE formee. Qed.
 
 Lemma form0_eq0 : M = 0 -> forall u v, '[u, v] = 0.
-Proof. by rewrite /form_of_matrix => -> u v; rewrite mulmx0 mul0mx mxE. Qed.
+Proof.
+by rewrite /form_of_matrix => -> u v; rewrite mulmx0 mul0mx trace_mx11 mxE.
+Qed.
 
-End FormOfMatrix.
+End FormOfMatrix1.
 
 Section MatrixOfForm.
 Variable (theta : {rmorphism R -> R}).
@@ -884,18 +897,17 @@ rewrite trmx_hermitian map_mxZ rmorph_sign -map_mx_comp.
 by rewrite (eq_map_mx_id _ (rmorphK _)).
 Qed.
 
-Lemma form_of_matrix_is_hermitian :
-  hermitian_for eps theta (form_of_matrix theta M).
+Lemma form_of_matrix_is_hermitian m :
+  hermitian_for eps theta (@form_of_matrix theta m M).
 Proof.
-move=> /= u v; rewrite {1}hermitianmxE /form_of_matrix -scalemxAr.
-rewrite -scalemxAl -!mulmxA -map_mxM -trmx_mul mxE; congr (_ * _).
-transitivity (theta (((u *m (v *m M) ^t theta) ^t theta) 0 0)).
-  by rewrite !mxE rmorphK.
-congr (theta (_ 0 0)); rewrite !(trmx_mul, map_mxM, map_trmx, trmxK).
-by rewrite -!map_mx_comp !(eq_map_mx_id _ (rmorphK _)) mulmxA.
+move=> /= u v; rewrite {1}hermitianmxE /form_of_matrix.
+rewrite -!(scalemxAr, scalemxAl) linearZ/=; congr (_ * _).
+rewrite -mxtrace_tr -trace_map_mx !(trmx_mul, map_mxM, map_trmx, trmxK).
+by rewrite -mulmxA -!map_mx_comp !(eq_map_mx_id _ (rmorphK _)).
 Qed.
 
-Canonical form_of_matrix_hermitian := Hermitian form_of_matrix_is_hermitian.
+Canonical form_of_matrix_hermitian m :=
+ (Hermitian (@form_of_matrix_is_hermitian m)).
 
 Local Notation "''[' u , v ]" := (form_of_matrix theta M u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
@@ -904,7 +916,8 @@ Local Notation "A _|_ B" := (A%MS <= B%MS^_|_)%MS : matrix_set_scope.
 
 Lemma orthomxE u v : (u _|_ v)%MS = ('[u, v] == 0).
 Proof.
-by rewrite (sameP sub_kermxP eqP) mulmxA [_ *m _^t _]mx11_scalar fmorph_eq0.
+rewrite (sameP sub_kermxP eqP) mulmxA.
+by rewrite [_ *m _^t _]mx11_scalar -trace_mx11 fmorph_eq0.
 Qed.
 
 Lemma hermmx_eq0P {u v} : reflect ('[u, v] = 0) (u _|_ v)%MS.
