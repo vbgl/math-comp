@@ -1329,10 +1329,11 @@ Lemma cfQuoEker phi x :
   x \in G -> (phi / cfker phi)%CF (coset (cfker phi) x) = phi x.
 Proof. by move/cfQuoE->; rewrite ?cfker_normal. Qed.
 
-(* Lemma cfaithful_quo phi : cfaithful (phi / cfker phi). *)
-(* Proof. by rewrite cfaithfulE cfker_quo ?cfker_normal ?trivg_quotient. Qed. *)
+Lemma cfaithful_quo phi : cfaithful (phi / cfker phi).
+Proof. by rewrite cfaithfulE cfker_quo ?cfker_normal ?trivg_quotient. Qed.
 
 (* Note that there is no requirement that K be normal in H or G. *)
+
 Lemma cfResQuo H K phi :
      K \subset cfker phi -> K \subset H -> H \subset G -> 
   ('Res[H / K] (phi / K) = 'Res[H] phi / K)%CF.

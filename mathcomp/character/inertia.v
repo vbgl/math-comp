@@ -12,7 +12,7 @@ Require Import gproduct commutator gseries nilpotent pgroup sylow maximal.
 From mathcomp
 Require Import frobenius.
 From mathcomp
-Require Import matrix mxalgebra mxrepresentation vector algC classfun character.
+Require Import matrix mxalgebra mxrepresentation vector algC forms classfun character.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -517,9 +517,9 @@ have{chiHk chiHj}: '['Res[H] ('Ind[G] 'chi_j), 'chi_k] != 0.
   apply: contraNneq chiHk; rewrite cfdot_sum_irr => /psumr_eq0P/(_ i isT)/eqP.
   rewrite -cfdotC cfdotC mulf_eq0 conjC_eq0 (negbTE chiHj) /= => -> // i1.
   by rewrite -cfdotC Cnat_ge0 // rpredM ?Cnat_cfdot_char ?cfInd_char ?irr_char.
-rewrite cfResInd // cfdotZl mulf_eq0 cfdot_suml => /norP[_].
+rewrite cfResInd // linearZl_LR mulf_eq0 linear_suml => /norP[_].
 apply: contraR => chiGk'j; rewrite big1 // => x Gx; apply: contraNeq chiGk'j.
-rewrite -conjg_IirrE cfdot_irr pnatr_eq0; case: (_ =P k) => // <- _.
+rewrite -conjg_IirrE /= cfdot_irr pnatr_eq0; case: (_ =P k) => // <- _.
 by rewrite conjg_IirrE; apply/cfclassP; exists x.
 Qed.
 
@@ -537,7 +537,7 @@ Corollary constt0_Res_cfker i :
 Proof.
 move=> nsHG /(Clifford_Res_sum_cfclass nsHG); have [sHG nHG] := andP nsHG.
 rewrite irr0 cfdot_Res_l cfclass1 // big_seq1 cfInd_cfun1 //.
-rewrite cfdotZr conjC_nat => def_chiH.
+rewrite linearZ /= conjC_nat => def_chiH.
 apply/subsetP=> x Hx; rewrite cfkerEirr inE -!(cfResE _ sHG) //.
 by rewrite def_chiH !cfunE cfun11 cfun1E Hx.
 Qed.
@@ -969,7 +969,7 @@ have part_c: {in calA, forall s (chi := 'Ind[G] 'chi_s),
   have [|phi1 Nphi1 Dphi] := constt_charP s1 Nphi _.
     rewrite irr_consttE -(canLR (addKr _) DchiT) addrC cfdotBl cfdot_irr.
     by rewrite mulrb ifN_eqC ?subr0.
-  rewrite -(cfResRes chi sHT sTG) DchiT Dphi !rmorphD !cfdotDl /=.
+  rewrite -(cfResRes chi sHT sTG) DchiT Dphi !rmorphD !linearDl /=.
   rewrite -ltr_subl_addl subrr ltr_paddr ?ltr_def //;
     rewrite Cnat_ge0 ?Cnat_cfdot_char ?cfRes_char ?irr_char //.
   by rewrite andbT -irr_consttE -constt_Ind_Res.
@@ -982,7 +982,7 @@ apply/imsetP/idP=> [[s /AtoB_P[_ BsG _] -> //] | Br].
 have /exists_inP[s rTs As]: [exists s in irr_constt ('Res 'chi_r), s \in calA].
   rewrite -negb_forall_in; apply: contra Br => /eqfun_inP => o_tT_rT.
   rewrite -(cfIndInd _ sTG sHT) -cfdot_Res_r ['Res _]cfun_sum_constt.
-  by rewrite cfdot_sumr big1 // => i rTi; rewrite cfdotZr o_tT_rT ?mulr0.
+  by rewrite linear_sumr big1 // => i rTi; rewrite linearZ /= o_tT_rT ?mulr0.
 exists s => //; have [/irrP[r1 DsG] _ _] := AtoB_P s As.
 by apply/eqP; rewrite /AtoB -constt_Ind_Res DsG irrK constt_irr in rTs *.
 Qed.
@@ -1039,19 +1039,19 @@ have [_]: '['Ind[G] phi] <= '['Ind[G] psi] ?= iff d_delta.
   pose sum_delta := \sum_(b in calS) e b * \sum_(g in calS) e g * (b == g)%:R.
   pose sum_d := \sum_(b in calS) e b * \sum_(g in calS) e g * d b g.
   have ->: '['Ind[G] phi] = sum_delta.
-    rewrite DphiG cfdot_suml; apply: eq_bigr => b _; rewrite cfdotZl cfdot_sumr.
-    by congr (_ * _); apply: eq_bigr => g; rewrite cfdotZr cfdot_irr conj_Cnat.
+    rewrite DphiG linear_suml; apply: eq_bigr => b _; rewrite linearZl_LR linear_sumr.
+    by congr (_ * _); apply: eq_bigr => g; rewrite linearZ /= cfdot_irr conj_Cnat.
   have ->: '['Ind[G] psi] = sum_d.
-    rewrite DpsiG cfdot_suml; apply: eq_bigr => b _.
-    rewrite -scalerAl cfdotZl cfdot_sumr; congr (_ * _).
-    by apply: eq_bigr => g _; rewrite -scalerAl cfdotZr conj_Cnat.
+    rewrite DpsiG linear_suml; apply: eq_bigr => b _.
+    rewrite -scalerAl linearZl_LR linear_sumr; congr (_ * _).
+    by apply: eq_bigr => g _; rewrite -scalerAl linearZ /= conj_Cnat.
   have eMmono := mono_lerif (ler_pmul2l (egt0 _ _)).
   apply: lerif_sum => b /eMmono->; apply: lerif_sum => g /eMmono->.
   split; last exact: eq_sym.
   have /CnatP[n Dd]: d b g \in Cnat by rewrite Cnat_cfdot_char.
   have [Db | _] := eqP; rewrite Dd leC_nat // -ltC_nat -Dd Db cfnorm_gt0.
   by rewrite -char1_eq0 // cfunE mulf_neq0 ?irr1_neq0.
-rewrite -!cfdot_Res_l ?cfRes_Ind_invariant // !cfdotZl cfnorm_irr irrWnorm //.
+rewrite -!cfdot_Res_l ?cfRes_Ind_invariant // !linearZl_LR /= cfnorm_irr irrWnorm //.
 rewrite eqxx => /esym/forall_inP/(_ _ _)/eqfun_inP; rewrite /d /= => Dd.
 have irrMchi: {in calS, forall b, 'chi_b * chi \in irr G}.
   by move=> b Sb; rewrite /= irrEchar charMchi Dd ?eqxx.
@@ -1060,13 +1060,13 @@ have injMchi: {in calS &, injective mul_Iirr}.
   by rewrite cfnorm_irr !cfIirrE ?irrMchi ?Dd // pnatr_eq1; case: (b =P g).
 have{DpsiG} ->: 'Ind psi = \sum_(b in calS) e b *: 'chi_(mul_Iirr b).
   by rewrite DpsiG; apply: eq_bigr => b Sb; rewrite -scalerAl cfIirrE ?irrMchi.
-split=> // i; rewrite irr_consttE cfdot_suml;
+split=> // i; rewrite irr_consttE linear_suml;
 apply/idP/idP=> [|/imageP[b Sb ->]].
   apply: contraR => N'i; rewrite big1 // => b Sb.
-  rewrite cfdotZl cfdot_irr mulrb ifN_eqC ?mulr0 //.
+  rewrite linearZl_LR /= cfdot_irr mulrb ifN_eqC ?[_ *:_]mulr0 //.
   by apply: contraNneq N'i => ->; apply: image_f.
-rewrite gtr_eqF // (bigD1 b) //= cfdotZl cfnorm_irr mulr1 ltr_paddr ?egt0 //.
-apply: sumr_ge0 => g /andP[Sg _]; rewrite cfdotZl cfdot_irr.
+rewrite gtr_eqF // (bigD1 b) //= linearZl_LR /= cfnorm_irr [_ *:_]mulr1 ltr_paddr ?egt0 //.
+apply: sumr_ge0 => g /andP[Sg _]; rewrite linearZl_LR /= cfdot_irr.
 by rewrite mulr_ge0 ?ler0n ?Cnat_ge0.
 Qed.
   
@@ -1082,7 +1082,7 @@ have [] := constt_Ind_mul_ext IHchi0; rewrite irr0 ?mul1r ?mem_irr //.
 set psiG := 'Ind 1 => irrMchi injMchi constt_theta {2}->.
 have dot_psiG b: '[psiG, 'chi_(mod_Iirr b)] = 'chi[G / N]_b 1%g.
   rewrite mod_IirrE // -cfdot_Res_r cfRes_sub_ker ?cfker_mod //.
-  by rewrite cfdotZr cfnorm1 mulr1 conj_Cnat ?cfMod1 ?Cnat_irr1.
+  by rewrite linearZ /= cfnorm1 mulr1 conj_Cnat ?cfMod1 ?Cnat_irr1.
 have mem_psiG (b : Iirr (G / N)): mod_Iirr b \in irr_constt psiG.
   by rewrite irr_consttE dot_psiG irr1_neq0.
 have constt_psiG b: (b \in irr_constt psiG) = (N \subset cfker 'chi_b).
@@ -1123,8 +1123,8 @@ have /eqP mulKT: (K * T)%g == G.
     have /inertiaJ <-: x \in 'I[theta] := subsetP IGtheta x Gx.
     by rewrite -(cfConjgRes _ nsKG) // irr_consttE conjg_IirrE // cfConjg_iso.
   apply: contraR; rewrite -conjg_IirrE // => not_sLp0x.
-  rewrite (Clifford_Res_sum_cfclass nsLK sLp0) cfdotZl cfdot_suml.
-  rewrite big1_seq ?mulr0 // => _ /cfclassP[y Ky ->]; rewrite -conjg_IirrE //.
+  rewrite (Clifford_Res_sum_cfclass nsLK sLp0) linearZl_LR linear_suml.
+  rewrite  big1_seq ?[_ *: _]mulr0 // => _ /cfclassP[y Ky ->]; rewrite -conjg_IirrE //=.
   rewrite cfdot_irr mulrb ifN_eq ?(contraNneq _ not_sLp0x) // => <-.
   by rewrite conjg_IirrE //; apply/cfclassP; exists y.
 have nsKT_G: K :&: T <| G.
@@ -1182,7 +1182,7 @@ have [inj_Mphi | /injectivePn[i [j i'j eq_mm_ij]]] := boolP (injectiveb mmLth).
     by rewrite char1_ge0 ?rpredZ_Cnat ?Cnat_cfdot_char ?cfInd_char ?irr_char.
   rewrite -big_uniq //= big_map big_filter -sumr_const ler_sum // => i _.
   rewrite cfunE -[in rhs in _ <= rhs](cfRes1 L) -cfdot_Res_r mmLthL cfRes1.
-  by rewrite DthL cfdotZr rmorph_nat cfnorm_irr mulr1.
+  by rewrite DthL linearZ /= rmorph_nat cfnorm_irr mulr1.
 constructor 2; exists e; first by exists p0.
 pose mu := (('chi_i / 'chi_j)%R %% L)%CF; pose U := cfker mu.
 have lin_mu: mu \is a linear_char by rewrite cfMod_lin_char ?rpred_div.
@@ -1192,8 +1192,8 @@ have ltUK: U \proper K.
   rewrite Dmu subGcfker -irr_eq1 -Dmu cfMod_eq1 //.
   by rewrite (can2_eq (divrK Uj) (mulrK Uj)) mul1r (inj_eq irr_inj).
 suffices: theta \in 'CF(K, L).
-  rewrite -cfnorm_Res_lerif // DthL cfnormZ !cfnorm_irr !mulr1 normr_nat.
-  by rewrite -natrX eqC_nat => /eqP.
+  rewrite -cfnorm_Res_lerif // DthL dnormZ /=  !cfnorm_irr !mulr1 normr_nat.
+  by rewrite -natrX  eqC_nat => /eqP.
 have <-: gcore U G = L.
   apply: maxL; last by rewrite sub_gcore ?cfker_mod.
   by rewrite gcore_norm (sub_proper_trans (gcore_sub _ _)).
@@ -1244,7 +1244,7 @@ have [e DtN]: exists e, 'Res 'chi_t = e%:R *: 'chi_s.
   rewrite cfclass_invariant // big_seq1.
   by exists (truncC e); rewrite truncCK ?Cnat_cfdot_char ?cfRes_char ?irr_char.
 have [/irrWnorm/eqP | [c injc DtNc]] := cfRes_prime_irr_cases t nsNG iGN pr_p.
-  rewrite DtN cfnormZ cfnorm_irr normr_nat mulr1 -natrX pnatr_eq1.
+  rewrite DtN dnormZ /= cfnorm_irr normr_nat mulr1 -natrX pnatr_eq1.
   by rewrite muln_eq1 andbb => /eqP->; rewrite scale1r.
 have nz_e: e != 0%N.
   have: 'Res[N] 'chi_t != 0 by rewrite cfRes_eq0 // ?irr_char ?irr_neq0.
@@ -1254,7 +1254,7 @@ have [i s'ci]: exists i, c i != s.
   have [<- | ] := eqVneq (c i0) s; last by exists i0.
   by exists i1; rewrite (inj_eq injc).
 have /esym/eqP/idPn[] := congr1 (cfdotr 'chi_(c i)) DtNc; rewrite {1}DtN /=.
-rewrite cfdot_suml cfdotZl cfdot_irr mulrb ifN_eqC // mulr0.
+rewrite linear_suml linearZl_LR /= cfdot_irr mulrb ifN_eqC // [_ *: _]mulr0.
 rewrite (bigD1 i) //= cfnorm_irr big1 ?addr0 ?oner_eq0 // => j i'j.
 by rewrite cfdot_irr mulrb ifN_eq ?(inj_eq injc).
 Qed.
