@@ -5,8 +5,6 @@ Require Import tuple bigop ssralg finset fingroup zmodp poly ssrnum.
 From mathcomp
 Require Import matrix mxalgebra vector.
 
-(* From mathcomp Require classfun. *)
-
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -251,6 +249,8 @@ Lemma linear_suml z I r (P : pred I) E :
   f (\sum_(i <- r | P i) E i) z = \sum_(i <- r | P i) f (E i) z.
 Proof. by rewrite -applyrE raddf_sum. Qed.
 
+(*  scalable_for is a "*:" op , should recognize a "*" *)
+
 Lemma linearZl_LR z : scalable_for s (f^~ z).
 Proof. by move=> ??; rewrite -applyrE linearZ_LR. Qed.
 Lemma linearPl z a : {morph f^~ z : u v / a *: u + v >-> s a u + v}.
@@ -470,24 +470,49 @@ Definition pairwise_orthogonal S := (0 \notin S) && pair_ortho_rec S.
 
 Definition orthonormal S := all [pred v | '[v] == 1] S && pair_ortho_rec S.
 
-Definition isometry tau := forall u v, '[tau u, tau v] = '[u, v].
-
-Definition isometry_from_to mD tau mR :=
-   prop_in2 mD (inPhantom (isometry tau))
-  /\ prop_in1 mD (inPhantom (forall u, in_mem (tau u) mR)).
-
 Definition orthogonal S1 S2 := nosimpl (@ortho_rec S1 S2).
 
 Lemma orthogonal_cons u us vs :
   orthogonal (u :: us) vs = orthogonal [:: u] vs && orthogonal us vs.
 Proof. by rewrite /orthogonal /= andbT. Qed.
 
+Lemma orthonormal_not0 S : orthonormal S -> 0 \notin S.
+Proof.
+by case/andP=> /allP S1 _; rewrite (contra (S1 _)) //= linear0r eq_sym oner_eq0.
+Qed.
+
+Lemma orthonormalE S :
+  orthonormal S = all [pred phi | '[phi] == 1] S && pairwise_orthogonal S.
+Proof. by rewrite -(andb_idl (@orthonormal_not0 S)) andbCA. Qed.
+
+
 End HermitianModuleTheory.
 
-Notation "{ 'in' D , 'isometry' tau , 'to' R }" :=
-    (isometry_from_to (mem D) tau (mem R))
-  (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }")
-     : type_scope.
+Section HermitianIsometry.
+
+Variables (R : ringType) (eps : bool) (theta : {rmorphism R -> R}).
+Variables (U1 U2: lmodType R) (form1 : {hermitian U1 for eps & theta})
+          (form2 : {hermitian U2 for eps & theta}).
+
+Local Notation "''[' u , v ]_1" := (form1 u%R v%R) : ring_scope.
+Local Notation "''[' u , v ]_2" := (form2 u%R v%R) : ring_scope.
+Local Notation "''[' u ]_1" := (form1 u%R u%R)  : ring_scope.
+Local Notation "''[' u ]_2" := (form2 u%R u%R): ring_scope. 
+Definition isometry tau := forall u v,(form1 (tau u) (tau v))= (form2 u%R v%R).
+
+
+(* Definition isometry_from_to mD tau mR := *)
+(*    prop_in2 mD (inPhantom (isometry tau)) *)
+(*   /\ prop_in1 mD (inPhantom (forall u, in_mem (tau u) mR)). *)
+
+
+
+(* Notation "{ 'in' D , 'isometry' tau , 'to' R }" := *)
+(*     (isometry_from_to (mem D) tau (mem R)) *)
+(*   (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }") *)
+(*      : type_scope. *)
+
+End  HermitianIsometry.
 
 Section HermitianVectTheory.
 
@@ -702,6 +727,63 @@ Lemma dnormB u v : let d := '[u, v] in '[u - v] = '[u] + '[v] - (d + d^*).
 Proof. by rewrite hnormB mul1r. Qed.
 
 End DotVectTheory.
+
+Section HermitianTheory.
+Variables (R : numClosedFieldType) (eps : bool) (theta : {rmorphism R -> R}).
+Variable (U : lmodType R) (form : {hermitian U for eps & theta}).
+
+Local Notation "''[' u , v ]" := (form u%R v%R) : ring_scope.
+Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
+
+
+Hypothesis hnorm_eq0: forall u,  (form u u == 0) = (u == 0).
+
+Lemma pairwise_orthogonalP  S :
+  reflect (uniq (0 :: S)
+             /\ {in S &, forall phi psi, phi != psi -> '[phi, psi] = 0})
+          (pairwise_orthogonal form S).
+Proof.
+rewrite /pairwise_orthogonal /=; case notS0: (~~ _); last by right; case.
+elim: S notS0 => [|phi S IH] /=; first by left.
+rewrite inE eq_sym andbT => /norP[nz_phi /IH{IH}IH].
+have [opS | not_opS] := allP; last first.
+  right=> [[/andP[notSp _] opS]]; case: not_opS => psi Spsi /=.
+  by rewrite opS ?mem_head 1?mem_behead // (memPnC notSp).
+rewrite (contra (opS _)) /= ?dnorm_eq0 //; last by rewrite  hnorm_eq0.
+apply: (iffP IH) => [] [uniqS oSS]; last first.
+  by split=> //; apply: sub_in2 oSS => psi Spsi; apply: mem_behead.
+split=> // psi xi; rewrite !inE => /predU1P[-> // | Spsi].
+  by case/predU1P=> [-> | /opS] /eqP.
+case/predU1P=> [-> _ | Sxi /oSS-> //].
+ apply/eqP; rewrite hermC. 
+by move:(opS psi   Spsi) => /= /eqP ->; rewrite rmorph0 mulr0.
+Qed.
+
+
+Lemma orthonormalP S :
+  reflect (uniq S /\ {in S &, forall phi psi, '[phi, psi] = (phi == psi)%:R})
+          (orthonormal form S).
+Proof.
+rewrite orthonormalE; have [/= normS | not_normS] := allP; last first.
+  by right=> [[_ o1S]]; case: not_normS => phi Sphi; rewrite /= o1S ?eqxx.
+apply: (iffP (pairwise_orthogonalP S)) => [] [uniqS oSS].
+  split=> // [|phi psi]; first by case/andP: uniqS.
+  by have [-> _ /normS/eqP | /oSS] := altP eqP.
+split=> // [|phi psi Sphi Spsi /negbTE]; last by rewrite oSS // => ->.
+by rewrite /= (contra (normS _)) // linear0r  eq_sym oner_eq0.
+Qed.
+
+
+Lemma orthonormal2P phi psi :
+  reflect [/\ '[phi, psi] = 0, '[phi] = 1 & '[psi] = 1]
+          (orthonormal form [:: phi; psi]).
+Proof.
+rewrite /orthonormal /= !andbT andbC.
+by apply: (iffP and3P) => [] []; do 3!move/eqP->.
+Qed.
+
+End HermitianTheory.
+
 
 Section DotFinVectTheory.
 
@@ -1010,3 +1092,4 @@ End MatrixForms.
 Notation symmetricmx := (hermitianmx _ false idfun).
 Notation skewmx := (hermitianmx _ true idfun).
 Notation hermsymmx := (hermitianmx _ false (@conjC _)).
+

@@ -12,7 +12,7 @@ Require Import zmodp commutator cyclic center pgroup nilpotent sylow abelian.
 From mathcomp
 Require Import matrix mxalgebra mxpoly mxrepresentation vector ssrnum algC.
 From mathcomp
-Require Import classfun.
+Require Import forms classfun.
 
 (******************************************************************************)
 (* This file contains the basic notions of character theory, based on Isaacs. *)
@@ -1349,19 +1349,24 @@ Qed.
 Lemma cfnorm_irr i : '['chi[G]_i] = 1.
 Proof. by rewrite cfdot_irr eqxx. Qed.
 
+Notation orthonormal := (orthonormal [hermitian of @cfdot _ _ ]).
+
+
 Lemma irr_orthonormal : orthonormal (irr G).
 Proof.
-apply/orthonormalP; split; first exact: free_uniq (irr_free G).
+apply/orthonormalP ; first by move=> u; rewrite dnorm_eq0.
+split; first exact: free_uniq (irr_free G).
 move=> _ _ /irrP[i ->] /irrP[j ->].
-by rewrite cfdot_irr (inj_eq (@irr_inj _ G)).
+by rewrite /= cfdot_irr (inj_eq (@irr_inj _ G)). 
 Qed.
+
 
 Lemma coord_cfdot phi i : coord (irr G) i phi = '[phi, 'chi_i].
 Proof.
 rewrite {2}(coord_basis (irr_basis G) (memvf phi)).
-rewrite cfdot_suml (bigD1 i) // cfdotZl /= -tnth_nth cfdot_irr eqxx mulr1.
-rewrite big1 ?addr0 // => j neq_ji; rewrite cfdotZl /= -tnth_nth cfdot_irr.
-by rewrite (negbTE neq_ji) mulr0.
+rewrite linear_suml (bigD1 i) //= linearZl_LR -tnth_nth /=  cfdot_irr eqxx /= [_ *: _]mulr1.
+rewrite big1 ?addr0 // => j neq_ji; rewrite linearZl_LR  /= -tnth_nth cfdot_irr.
+by rewrite (negbTE neq_ji) [_ *: _]mulr0.
 Qed.
 
 Lemma cfun_sum_cfdot phi : phi = \sum_i '[phi, 'chi_i]_G *: 'chi_i.
@@ -1373,8 +1378,8 @@ Qed.
 Lemma cfdot_sum_irr phi psi :
   '[phi, psi]_G = \sum_i '[phi, 'chi_i] * '[psi, 'chi_i]^*.
 Proof.
-rewrite {1}[phi]cfun_sum_cfdot cfdot_suml; apply: eq_bigr => i _.
-by rewrite cfdotZl -cfdotC.
+rewrite {1}[phi]cfun_sum_cfdot linear_suml; apply: eq_bigr => i _.
+by rewrite linearZl_LR -cfdotC.
 Qed.
 
 Lemma Cnat_cfdot_char_irr i phi :
@@ -1430,8 +1435,8 @@ Lemma eq_scaled_irr a b i j :
 Proof.
 apply/eqP/andP=> [|[/eqP-> /pred2P[]-> //]]; last by rewrite !scale0r.
 move/(congr1 (cfdotr 'chi__)) => /= eq_ai_bj.
-move: {eq_ai_bj}(eq_ai_bj i) (esym (eq_ai_bj j)); rewrite !cfdotZl !cfdot_irr.
-by rewrite !mulr_natr !mulrb !eqxx eq_sym orbC; case: ifP => _ -> //= ->.
+move: {eq_ai_bj}(eq_ai_bj i) (esym (eq_ai_bj j)); rewrite !linearZl_LR /= !cfdot_irr.
+by rewrite ![_ *: _]mulr_natr !mulrb !eqxx eq_sym orbC; case: ifP => _ -> //= ->.
 Qed.
 
 Lemma eq_signed_irr (s t : bool) i j :
@@ -1454,8 +1459,8 @@ rewrite -!eq_scale_irr; apply/eqP/idP; last first.
 have [-> /addrI/eqP-> // | /= ] := altP eqP.
 rewrite eq_scale_irr => /norP[/negP nz_a /negPf neq_ir].
 move/(congr1 (cfdotr 'chi__))/esym/eqP => /= eq_cfdot.
-move: {eq_cfdot}(eq_cfdot i) (eq_cfdot r); rewrite eq_sym !cfdotDl !cfdotZl.
-rewrite !cfdot_irr !mulr_natr !mulrb !eqxx -!(eq_sym i) neq_ir !add0r.
+move: {eq_cfdot}(eq_cfdot i) (eq_cfdot r); rewrite eq_sym !linearDl !linearZl_LR.
+rewrite /= !cfdot_irr ![_ *: _]mulr_natr !mulrb !eqxx -!(eq_sym i) neq_ir !add0r.
 have [<- _ | _] := i =P t; first by rewrite neq_ir addr0; case: ifP => // _ ->.
 rewrite 2!fun_if if_arg addr0 addr_eq0; case: eqP => //= <- ->.
 by rewrite neq_ir 2!fun_if if_arg eq_sym addr0; case: ifP.
@@ -1517,7 +1522,7 @@ Lemma constt_charP (i : Iirr G) chi :
           (i \in irr_constt chi).
 Proof.
 move=> Nchi; apply: (iffP idP) => [i_in_chi| [chi' Nchi' ->]]; last first.
-  rewrite inE /= cfdotDl cfdot_irr eqxx -(eqP (Cnat_cfdot_char_irr i Nchi')).
+  rewrite inE /= linearDl /= cfdot_irr eqxx -(eqP (Cnat_cfdot_char_irr i Nchi')).
   by rewrite -natrD pnatr_eq0.
 exists (chi - 'chi_i); last by rewrite addrC subrK.
 apply/forallP=> j; rewrite coord_cfdot cfdotBl cfdot_irr.
@@ -1559,7 +1564,7 @@ Lemma constt_ortho_char (phi psi : 'CF(G)) i j :
 Proof.
 move=> _ _ /constt_charP[//|phi1 Nphi1 ->] /constt_charP[//|psi1 Npsi1 ->].
 rewrite cfdot_irr; case: eqP => // -> /eqP/idPn[].
-rewrite cfdotDl !cfdotDr cfnorm_irr -addrA gtr_eqF ?ltr_paddr ?ltr01 //.
+rewrite linearDl !linearDr /= cfnorm_irr -addrA gtr_eqF ?ltr_paddr ?ltr01 //.
 by rewrite Cnat_ge0 ?rpredD ?Cnat_cfdot_char ?irr_char.
 Qed.
 
@@ -1748,7 +1753,7 @@ Lemma cfdot_Res_ge_constt i j psi :
   '['Res[H, G] 'chi_j, 'chi_i] <= '['Res[H] psi, 'chi_i].
 Proof.
 move=> {psi} _ /constt_charP[// | psi Npsi ->].
-rewrite linearD cfdotDl addrC -subr_ge0 addrK Cnat_ge0 //=.
+rewrite linearD linearDl addrC -subr_ge0 addrK Cnat_ge0 //=.
 by rewrite Cnat_cfdot_char_irr // cfRes_char.
 Qed.
 
@@ -1807,6 +1812,7 @@ Qed.
 Lemma cfMorph_lin_charE chi :
   G \subset D -> (cfMorph chi \is a linear_char) = (chi \is a linear_char).
 Proof. by rewrite qualifE cfMorph1 => /cfMorph_charE->. Qed.
+
 
 Lemma cfMorph_irr chi :
   G \subset D -> (cfMorph chi \in irr G) = (chi \in irr (f @* G)).
@@ -1923,7 +1929,7 @@ Lemma Res_sdprod_irr phi :
   K \subset cfker phi -> phi \in irr G -> 'Res phi \in irr H.
 Proof.
 move=> kerK /irrP[i Dphi]; rewrite irrEchar -(cfSdprod_iso defG).
-by rewrite cfRes_sdprodK // Dphi cfnorm_irr cfRes_char ?irr_char /=.
+by rewrite cfRes_sdprodK //= Dphi cfnorm_irr cfRes_char ?irr_char /=.
 Qed.
 
 Lemma sdprod_Res_IirrE i :
@@ -2137,7 +2143,8 @@ Qed.
 
 Lemma cfBigdprodi_irr i chi :
   P i -> (cfBigdprodi defG chi \in irr G) = (chi \in irr (A i)).
-Proof. by move=> Pi; rewrite !irrEchar cfBigdprodi_charE ?cfBigdprodi_iso. Qed.
+Proof. 
+by move=> Pi; rewrite !irrEchar cfBigdprodi_charE // cfBigdprodi_iso. Qed.
 
 Lemma cfBigdprod_irr chi :
   (forall i, P i -> chi i \in irr (A i)) -> cfBigdprod defG chi \in irr G.
@@ -2218,6 +2225,7 @@ Proof.
 rewrite !irrEchar cfAut_char; apply/andb_id2l=> /cfdot_aut_char->.
 exact: fmorph_eq1.
 Qed.
+
 
 Lemma cfConjC_irr i : (('chi_i)^*)%CF \in irr G.
 Proof. by rewrite cfAut_irr mem_irr. Qed.
@@ -2592,11 +2600,11 @@ Lemma cfDetD :
   {in character &, {morph cfDet : phi psi / phi + psi >-> phi * psi}}.
 Proof.
 move=> phi psi Nphi Npsi; rewrite /= -big_split; apply: eq_bigr => i _ /=.
-by rewrite -exprD cfdotDl truncCD ?nnegrE ?Cnat_ge0 // Cnat_cfdot_char_irr.
+by rewrite -exprD linearDl truncCD ?nnegrE ?Cnat_ge0 // Cnat_cfdot_char_irr.
 Qed.
 
 Lemma cfDet0 : cfDet 0 = 1.
-Proof. by rewrite /cfDet big1 // => i _; rewrite cfdot0l truncC0. Qed.
+Proof. by rewrite /cfDet big1 // => i _; rewrite linear0l truncC0. Qed.
 
 Lemma cfDetMn k :
   {in character, {morph cfDet : phi / phi *+ k >-> phi ^+ k}}.
@@ -2611,9 +2619,9 @@ transitivity (\prod_W detRepr (socle_repr W) ^+ standard_irr_coef rG W).
   rewrite (reindex _ (socle_of_Iirr_bij _)) /cfDet /=.
   apply: eq_bigr => i _; congr (_ ^+ _).
   rewrite (cfRepr_sim (mx_rsim_standard rG)) cfRepr_standard.
-  rewrite cfdot_suml (bigD1 i) ?big1 //= => [|j i'j]; last first.
-    by rewrite cfdotZl cfdot_irr (negPf i'j) mulr0.
-  by rewrite cfdotZl cfnorm_irr mulr1 addr0 natCK.
+  rewrite linear_suml (bigD1 i) ?big1 //= => [|j i'j]; last first.
+    by rewrite linearZl_LR /=  cfdot_irr (negPf i'j) [_ *: _]mulr0.
+  by rewrite linearZl_LR /= cfnorm_irr [_ *: _]mulr1 addr0 natCK.
 apply/cfun_inP=> x Gx; rewrite prod_cfunE //.
 transitivity (detRepr (standard_grepr rG) x); last first.
   rewrite !cfunE Gx !trace_mx11 !mxE eqxx !mulrb.
@@ -2880,8 +2888,8 @@ Lemma irr1_bound (i : Iirr G) :
 Proof.
 congr (_ <= _ ?= iff _): (cfnorm_Res_lerif 'chi_i (cfcenter_sub 'chi_i)).
   have [xi Lxi ->] := cfcenter_Res 'chi_i.
-  have /irrP[j ->] := lin_char_irr Lxi; rewrite cfdotZl cfdotZr cfdot_irr eqxx.
-  by rewrite mulr1 irr1_degree conjC_nat.
+  have /irrP[j ->] := lin_char_irr Lxi. rewrite linearZ /= linearZl_LR /= cfdot_irr eqxx.
+  by rewrite [_ *: _]mulr1 irr1_degree conjC_nat.
 by rewrite cfdot_irr eqxx mulr1.
 Qed.
   
