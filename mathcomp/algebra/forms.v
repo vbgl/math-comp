@@ -503,7 +503,7 @@ Local Notation "''[' u , v ]_1" := (form1 u%R v%R) : ring_scope.
 Local Notation "''[' u , v ]_2" := (form2 u%R v%R) : ring_scope.
 Local Notation "''[' u ]_1" := (form1 u%R u%R)  : ring_scope.
 Local Notation "''[' u ]_2" := (form2 u%R u%R): ring_scope. 
-Definition isometry tau := forall u v,(form1 (tau u) (tau v))= (form2 u%R v%R).
+Definition isometry tau := forall u v, (form1 (tau u) (tau v))= (form2 u%R v%R).
 
 
 Definition isometry_from_to mD tau mR :=
@@ -866,6 +866,84 @@ Local Notation "''e_' i" := (delta_mx 0 i)
 
 Local Notation "M ^ phi" := (map_mx phi M).
 Local Notation "M ^t phi" := (map_mx phi (M ^T)) (phi at level 30, at level 30).
+
+Section  BuildIsometries.
+
+Variables (C : numClosedFieldType).
+Variables (U U1 U2: vectType C).
+Variables (form : {dot U for conjC})(form1 : {dot U1 for conjC})(form2 : {dot U2 for conjC}).
+
+Definition normf1 := fun u => form1 u u.
+Definition normf2 := fun u => form2 u u.
+
+(* Local Notation "''[' u , v ]" := (form u%R v%R) : ring_scope. *)
+(* Local Notation "''[' u ]" := '[u, u]%R : ring_scope .*)
+
+(* Variable (gT : finGroupType) (L G : {group gT}). *)
+(* Implicit Types (phi psi xi : 'CF(L)) (R S : seq 'CF(L)). *)
+(* Implicit Types (U : pred 'CF(L)) (W : pred 'CF(G)). *)
+
+(* Notation pairwise_orthogonal := (pairwise_orthogonal [hermitian of @cfdot _ _]). *)
+(* Notation pairwise_orthogonalP := (pairwise_orthogonalP [dot of @cfdot _ _]). *)
+
+
+
+
+(* Lemma isometry_of_cfnorm S tauS : *)
+(*     pairwise_orthogonal S -> pairwise_orthogonal tauS -> *)
+(*     map cfnorm tauS = map cfnorm S -> *)
+(*   {tau : {linear U1 -> U2} | map tau S = tauS *)
+(*                                    & {in <<S>>%VS &, isometry tau}}. *)
+
+
+Lemma isometry_of_dnorm S tauS :
+    pairwise_orthogonal form1 S -> pairwise_orthogonal form2 tauS ->
+    map normf2 tauS = map normf1 S ->
+  {tau : {linear U1 -> U2} | map tau S = tauS
+                                   & {in <<S>>%VS &, isometry form2 form1 tau}}.
+Proof.
+move=> oS oT eq_nST; have freeS := orthogonal_free oS.
+have eq_sz: size tauS = size S by have:= congr1 size eq_nST; rewrite !size_map.
+have [tau defT] := linear_of_free S tauS; rewrite -[S]/(tval (in_tuple S)).
+exists tau => [|u v /coord_span-> /coord_span->]; rewrite ?raddf_sum ?defT //=.
+apply: eq_bigr => i _ /=; rewrite linearZ !linearZ /= !linear_suml; congr (_ * _).
+apply: eq_bigr => j _ /=; rewrite linearZ !linearZl_LR; congr (_ * _).
+rewrite -!(nth_map 0 0 tau) ?{}defT //; have [-> | neq_ji] := eqVneq j i.
+  by rewrite /=  -[RHS](nth_map 0 0 normf1) -?[LHS](nth_map 0 0 normf2) ?eq_sz // eq_nST.
+have{oS} [/=/andP[_ uS] oS] := pairwise_orthogonalP _ _ oS.
+have{oT} [/=/andP[_ uT] oT] := pairwise_orthogonalP _ _ oT.
+by rewrite oS ?oT ?mem_nth ?nth_uniq ?eq_sz.
+Qed.
+
+
+Lemma isometry_of_free S f :
+    free S -> {in S &, isometry form2 form1 f} ->
+  {tau : {linear U1 -> U2} |
+    {in S, tau =1 f} & {in <<S>>%VS &, isometry form2 form1 tau}}.
+Proof.
+move=> freeS If; have defS := free_span freeS.
+have [tau /(_ freeS (size_map f S))Dtau] := linear_of_free S (map f S).
+have{Dtau} Dtau: {in S, tau =1 f}.
+  by move=> _ /(nthP 0)[i ltiS <-]; rewrite -!(nth_map 0 0) ?Dtau.
+exists tau => // _ _ /defS[a -> _] /defS[b -> _] /=.
+rewrite  2!{1}linear_sum /= !{1}linear_suml /=;  apply/eq_big_seq=> xi1 Sxi1.
+rewrite !{1}linear_sumr; apply/eq_big_seq=> xi2 Sxi2 /=.
+by rewrite !linearZ /= !linearZl_LR !Dtau //= If.
+Qed.
+
+
+(* Lemma isometry_raddf_inj  (tau : {additive U1 -> U2}) : *)
+(*     {in U1 &, isometry form2 form1 tau} -> *)
+(*       {in U1 &, forall u v, u - v \in U1} -> *)
+(*      ->{in U1 &, injective tau}. *)
+(* Proof. *)
+(* move=> Itau linU phi psi Uphi Upsi /eqP; rewrite -subr_eq0 -raddfB. *)
+(* by rewrite -(dnorm_eq0 form2)  Itau ?linU // dnorm_eq0 subr_eq0 => /eqP. *)
+(* Qed. *)
+
+
+
+End BuildIsometries.
 
 Section MatrixForms.
 

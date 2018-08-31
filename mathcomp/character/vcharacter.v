@@ -540,7 +540,7 @@ Lemma Zisometry_of_cfnorm (tauS : seq 'CF(G)) :
   {tau : {linear 'CF(L) -> 'CF(G)} | map tau S = tauS
        & {in 'Z[S], isometry tau, to 'Z[irr G]}}.
 Proof.
-move=> oSS oTT /isometry_of_cfnorm[||tau defT Itau] // Z_T; exists tau => //.
+move=> oSS oTT /isometry_of_dnorm[||tau defT Itau] // Z_T; exists tau => //.
 split=> [|_ /zchar_nth_expansion[u Zu ->]].
   by apply: sub_in2 Itau; apply: zchar_span.
 rewrite big_seq linear_sum rpred_sum // => xi Sxi.
@@ -560,7 +560,7 @@ Qed.
 
 Lemma Zisometry_inj A nu :
   {in 'Z[S, A] &, isometry nu} -> {in 'Z[S, A] &, injective nu}.
-Proof. by move/isometry_raddf_inj; apply; apply: rpredB. Qed.
+Proof.  by move/isometry_raddf_inj; apply; apply: rpredB. Qed.
 
 Lemma isometry_in_zchar nu : {in S &, isometry nu} -> {in 'Z[S] &, isometry nu}.
 Proof.
