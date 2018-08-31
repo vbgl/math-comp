@@ -378,6 +378,7 @@ Definition pack f fM :=
 
 End ClassDef.
 
+
 Module Exports.
 Notation "{ 'dot' U 'for' theta }" := (map theta (Phant U))
   (at level 0, format "{ 'dot'  U  'for'  theta }") : ring_scope.
@@ -395,6 +396,8 @@ Canonical additivel.
 Canonical linearl.
 Canonical bilinear.
 Canonical hermitian.
+Coercion hermitian: map >-> Hermitian.map.
+Coercion bilinear: map >-> Bilinear.map.
 End Exports.
 
 End Dot.
@@ -485,6 +488,8 @@ Lemma orthonormalE S :
   orthonormal S = all [pred phi | '[phi] == 1] S && pairwise_orthogonal S.
 Proof. by rewrite -(andb_idl (@orthonormal_not0 S)) andbCA. Qed.
 
+Lemma orthonormal_orthogonal S : orthonormal S -> pairwise_orthogonal S.
+Proof. by rewrite orthonormalE => /andP[_]. Qed.
 
 End HermitianModuleTheory.
 
@@ -501,16 +506,16 @@ Local Notation "''[' u ]_2" := (form2 u%R u%R): ring_scope.
 Definition isometry tau := forall u v,(form1 (tau u) (tau v))= (form2 u%R v%R).
 
 
-(* Definition isometry_from_to mD tau mR := *)
-(*    prop_in2 mD (inPhantom (isometry tau)) *)
-(*   /\ prop_in1 mD (inPhantom (forall u, in_mem (tau u) mR)). *)
+Definition isometry_from_to mD tau mR :=
+   prop_in2 mD (inPhantom (isometry tau))
+  /\ prop_in1 mD (inPhantom (forall u, in_mem (tau u) mR)).
 
 
 
-(* Notation "{ 'in' D , 'isometry' tau , 'to' R }" := *)
-(*     (isometry_from_to (mem D) tau (mem R)) *)
-(*   (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }") *)
-(*      : type_scope. *)
+Notation "{ 'in' D , 'isometry' tau , 'to' R }" :=
+    (isometry_from_to (mem D) tau (mem R))
+  (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }")
+     : type_scope.
 
 End  HermitianIsometry.
 
@@ -728,15 +733,15 @@ Proof. by rewrite hnormB mul1r. Qed.
 
 End DotVectTheory.
 
-Section HermitianTheory.
-Variables (R : numClosedFieldType) (eps : bool) (theta : {rmorphism R -> R}).
-Variable (U : lmodType R) (form : {hermitian U for eps & theta}).
 
+Section HermitianTheory.
+Variables (C : numClosedFieldType) (eps : bool) (theta : {rmorphism C -> C}).
+(* Variable (U : lmodType C) (form : {hermitian U for eps & theta}). *)
+Variable (U : lmodType C)  (form : {dot U for conjC}).
 Local Notation "''[' u , v ]" := (form u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
 
 
-Hypothesis hnorm_eq0: forall u,  (form u u == 0) = (u == 0).
 
 Lemma pairwise_orthogonalP  S :
   reflect (uniq (0 :: S)
@@ -749,7 +754,7 @@ rewrite inE eq_sym andbT => /norP[nz_phi /IH{IH}IH].
 have [opS | not_opS] := allP; last first.
   right=> [[/andP[notSp _] opS]]; case: not_opS => psi Spsi /=.
   by rewrite opS ?mem_head 1?mem_behead // (memPnC notSp).
-rewrite (contra (opS _)) /= ?dnorm_eq0 //; last by rewrite  hnorm_eq0.
+rewrite (contra (opS _)) /= ?dnorm_eq0 //.
 apply: (iffP IH) => [] [uniqS oSS]; last first.
   by split=> //; apply: sub_in2 oSS => psi Spsi; apply: mem_behead.
 split=> // psi xi; rewrite !inE => /predU1P[-> // | Spsi].
@@ -758,6 +763,7 @@ case/predU1P=> [-> _ | Sxi /oSS-> //].
  apply/eqP; rewrite hermC. 
 by move:(opS psi   Spsi) => /= /eqP ->; rewrite rmorph0 mulr0.
 Qed.
+
 
 
 Lemma orthonormalP S :
@@ -792,6 +798,21 @@ Variable (U : vectType C) (form : {dot U for conjC}).
 
 Local Notation "''[' u , v ]" := (form u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
+
+
+
+Lemma orthogonal_free S : pairwise_orthogonal form S -> free  S.
+Proof.
+case/pairwise_orthogonalP=> [/=/andP[notS0 uniqS] oSS].
+rewrite -(in_tupleE S); apply/freeP => a aS0 i.
+have S_i: S`_i \in S by apply: mem_nth.
+have /eqP: '[S`_i, 0] = 0 := linear0r _ _.
+rewrite -{2}aS0 raddf_sum /= (bigD1 i) //= big1 => [|j neq_ji]; last 1 first.
+  by rewrite linearZ /= oSS ?mulr0 ?mem_nth // eq_sym nth_uniq.
+rewrite addr0 linearZ mulf_eq0 conjC_eq0 dnorm_eq0.
+by case/pred2P=> // Si0; rewrite -Si0 S_i in notS0.
+Qed.
+
 
 Theorem CauchySchwarz (u v : U) :
   `|'[u, v]| ^+ 2 <= '[u] * '[v] ?= iff ~~ free [:: u; v].

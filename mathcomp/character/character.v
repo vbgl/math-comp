@@ -1349,13 +1349,12 @@ Qed.
 Lemma cfnorm_irr i : '['chi[G]_i] = 1.
 Proof. by rewrite cfdot_irr eqxx. Qed.
 
-Notation orthonormal := (orthonormal [hermitian of @cfdot _ _ ]).
+(* Notation orthonormal := (orthonormal [hermitian of @cfdot _ _ ]).  *)
 
 
-Lemma irr_orthonormal : orthonormal (irr G).
+Lemma irr_orthonormal : orthonormal [hermitian of @cfdot _ _ ] (irr G).
 Proof.
-apply/orthonormalP ; first by move=> u; rewrite dnorm_eq0.
-split; first exact: free_uniq (irr_free G).
+apply/orthonormalP;split; first exact: free_uniq (irr_free G).
 move=> _ _ /irrP[i ->] /irrP[j ->].
 by rewrite /= cfdot_irr (inj_eq (@irr_inj _ G)). 
 Qed.

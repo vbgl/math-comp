@@ -14,7 +14,7 @@ Require Import ssrnum ssrint polydiv rat matrix mxalgebra intdiv mxpoly.
 From mathcomp
 Require Import vector falgebra fieldext separable galois algC cyclotomic algnum.
 From mathcomp
-Require Import mxrepresentation classfun character.
+Require Import mxrepresentation forms classfun character.
 
 (******************************************************************************)
 (* This file provides some standard results based on integrality properties   *)

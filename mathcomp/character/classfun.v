@@ -382,7 +382,7 @@ Definition classfun_on A := <<cfun_base A>>%VS.
 Definition cfdot phi psi := #|B|%:R^-1 * \sum_(x in B) phi x * (psi x)^*.
 Definition cfdotr_head k psi phi := let: tt := k in cfdot phi psi.
 
-Definition cfnorm'_head k phi := let: tt := k in cfdot phi phi.
+Definition cfnorm_head k phi := let: tt := k in cfdot phi phi.
 
 Coercion seq_of_cfun phi := [:: phi].
 
@@ -421,9 +421,11 @@ Notation "''[' u , v ]" := (cfdot u v) : ring_scope.
 Notation "''[' u ]_ G" := '[u, u]_G (only parsing) : ring_scope.
 Notation "''[' u ]" := '[u, u] : ring_scope.
 Notation cfdotr := (cfdotr_head tt).
+Notation cfnorm := (cfnorm_head tt).
 
 Canonical rev_cfdot (gT : finGroupType) (B : {set gT}) :=
   [revop @cfdotr_head gT B tt of @cfdot gT B]. 
+
 
 Section Predicates.
 
@@ -760,6 +762,15 @@ rewrite inE; case/nandP=> notABx; first by rewrite (cfun_on0 Aphi) ?mul0r.
 by rewrite (cfun_on0 Bpsi) // rmorph0 mulr0.
 Qed.
 
+Lemma cfdotEl A phi psi :
+     phi \in 'CF(G, A) ->
+  '[phi, psi] = #|G|%:R^-1 * \sum_(x in A) phi x * (psi x)^*.
+Proof. by move=> Aphi; rewrite (cfdotElr Aphi (cfun_onT psi)) setIT. Qed.
+
+Lemma cfnormE A phi :
+  phi \in 'CF(G, A) -> '[phi] = #|G|%:R^-1 * (\sum_(x in A) `|phi x| ^+ 2).
+Proof. by move/cfdotEl->; rewrite (eq_bigr _ (fun _ _ => normCK _)). Qed.
+
 Lemma cfdot_cfuni A B :
   A <| G -> B <| G -> '['1_A, '1_B]_G = #|A :&: B|%:R / #|G|%:R.
 Proof.
@@ -772,12 +783,6 @@ Lemma cfnorm1 : '[1]_G = 1.
 Proof. by rewrite cfdot_cfuni ?genGid // setIid divff ?neq0CG. Qed.
 
 Lemma cfdotrE psi phi : cfdotr psi phi = '[phi, psi]. Proof. by []. Qed. 
-
-
-Lemma cfdotEl A phi psi :
-     phi \in 'CF(G, A) ->
-  '[phi, psi] = #|G|%:R^-1 * \sum_(x in A) phi x * (psi x)^*.
-Proof. by move=> Aphi; rewrite (cfdotElr Aphi (cfun_onT psi)) setIT. Qed.
 
 Lemma cfdotEr A phi psi :
      psi \in 'CF(G, A) ->
@@ -912,8 +917,64 @@ Qed.
 
 End MorphOrder.
 
+(* move to forms ?Cyril *)
+Section  BuildIsometries.
+
+Variable (gT : finGroupType) (L G : {group gT}).
+Implicit Types (phi psi xi : 'CF(L)) (R S : seq 'CF(L)).
+Implicit Types (U : pred 'CF(L)) (W : pred 'CF(G)).
+
+Notation pairwise_orthogonal := (pairwise_orthogonal [hermitian of @cfdot _ _]).
+Notation pairwise_orthogonalP := (pairwise_orthogonalP [dot of @cfdot _ _]).
+
+Lemma isometry_of_cfnorm S tauS :
+    pairwise_orthogonal S -> pairwise_orthogonal tauS ->
+    map cfnorm tauS = map cfnorm S ->
+  {tau : {linear 'CF(L) -> 'CF(G)} | map tau S = tauS
+                                   & {in <<S>>%VS &, isometry tau}}.
+Proof.
+move=> oS oT eq_nST; have freeS := orthogonal_free oS.
+have eq_sz: size tauS = size S by have:= congr1 size eq_nST; rewrite !size_map.
+have [tau defT] := linear_of_free S tauS; rewrite -[S]/(tval (in_tuple S)).
+exists tau => [|u v /coord_span-> /coord_span->]; rewrite ?raddf_sum ?defT //=.
+apply: eq_bigr => i _ /=; rewrite linearZ !linearZ /= !linear_suml; congr (_ * _).
+apply: eq_bigr => j _ /=; rewrite linearZ !linearZl_LR; congr (_ * _).
+rewrite -!(nth_map 0 0 tau) ?{}defT //; have [-> | neq_ji] := eqVneq j i.
+  by rewrite /=  -!['[_]](nth_map 0 0 cfnorm) ?eq_sz // eq_nST.
+have{oS} [/=/andP[_ uS] oS] := pairwise_orthogonalP _ oS.
+have{oT} [/=/andP[_ uT] oT] := pairwise_orthogonalP _ oT.
+by rewrite oS ?oT ?mem_nth ?nth_uniq ?eq_sz.
+Qed.
+
+(* hugly : ask Cyril*)
+Lemma isometry_of_free S f :
+    free S -> {in S &, isometry f} ->
+  {tau : {linear 'CF(L) -> 'CF(G)} |
+    {in S, tau =1 f} & {in <<S>>%VS &, isometry tau}}.
+Proof.
+move=> freeS If; have defS := free_span freeS.
+have [tau /(_ freeS (size_map f S))Dtau] := linear_of_free S (map f S).
+have{Dtau} Dtau: {in S, tau =1 f}.
+  by move=> _ /(nthP 0)[i ltiS <-]; rewrite -!(nth_map 0 0) ?Dtau.
+exists tau => // _ _ /defS[a -> _] /defS[b -> _] /=.
+rewrite  2!{1}linear_sum /= !{1}linear_suml /=;  apply/eq_big_seq=> xi1 Sxi1.
+rewrite !{1}linear_sumr; apply/eq_big_seq=> xi2 Sxi2 /=.
+rewrite 2!linearZ /=  !Dtau // 2!linearZl_LR /= [X in _ *: X]linearZ /= If //=.
+by rewrite ['[xi1, b xi2 *: xi2]]linearZ.
+Qed.
 
 
+Lemma isometry_raddf_inj U (tau : {additive 'CF(L) -> 'CF(G)}) :
+    {in U &, isometry tau} -> {in U &, forall u v, u - v \in U} ->
+  {in U &, injective tau}.
+Proof.
+move=> Itau linU phi psi Uphi Upsi /eqP; rewrite -subr_eq0 -raddfB.
+by rewrite -cfnorm_eq0 Itau ?linU // cfnorm_eq0 subr_eq0 => /eqP.
+Qed.
+
+
+
+End BuildIsometries.
 
 Section Restrict.
 
