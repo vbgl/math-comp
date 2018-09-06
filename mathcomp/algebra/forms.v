@@ -491,6 +491,7 @@ Proof. by rewrite -(andb_idl (@orthonormal_not0 S)) andbCA. Qed.
 Lemma orthonormal_orthogonal S : orthonormal S -> pairwise_orthogonal S.
 Proof. by rewrite orthonormalE => /andP[_]. Qed.
 
+
 End HermitianModuleTheory.
 
 Section HermitianIsometry.
@@ -582,6 +583,9 @@ apply: (iffP subvP); last by move=> H ??; apply/mem_orthovP=> ??; apply: H.
 by move=> /(_ _ _)/mem_orthovP; move=> H ????; apply: H.
 Qed.
 
+
+
+
 Lemma orthov_sym U V : (U _|_ V)%VS = (V _|_ U)%VS.
 Proof. by apply/orthovP/orthovP => eq0 ????; apply/eqP; rewrite herm_eq0C eq0. Qed.
 
@@ -660,6 +664,17 @@ apply: (iffP allP) => ousvs u => [v /ousvs/allP opus /opus/eqP // | /ousvs opus]
 by apply/allP=> v /= /opus->.
 Qed.
 
+Lemma orthogonal_oppr S R : orthogonal form S (map -%R R) = orthogonal form S R.
+Proof.
+wlog suffices IH: S R / orthogonal form S R -> orthogonal form S (map -%R R).
+  by apply/idP/idP=> /IH; rewrite ?mapK //; apply: opprK.
+move/orthogonalP=> oSR; apply/orthogonalP=> xi1 _ Sxi1 /mapP[xi2 Rxi2 ->].
+by rewrite linearNr /= oSR ?oppr0.
+Qed.
+
+
+
+
 Lemma orthogonalE us vs : (orthogonal form us vs) = (<<us>> _|_ <<vs>>)%VS.
 Proof.
 apply/orthogonalP/orthovP => uvsP u v; last first.
@@ -735,6 +750,7 @@ End DotVectTheory.
 
 
 Section HermitianTheory.
+
 Variables (C : numClosedFieldType) (eps : bool) (theta : {rmorphism C -> C}).
 (* Variable (U : lmodType C) (form : {hermitian U for eps & theta}). *)
 Variable (U : lmodType C)  (form : {dot U for conjC}).
@@ -764,6 +780,24 @@ case/predU1P=> [-> _ | Sxi /oSS-> //].
 by move:(opS psi   Spsi) => /= /eqP ->; rewrite rmorph0 mulr0.
 Qed.
 
+Lemma pairwise_orthogonal_cat R S :
+  pairwise_orthogonal form (R ++ S) =
+    [&& pairwise_orthogonal form R, pairwise_orthogonal form  S & orthogonal form R S].
+Proof.
+rewrite /pairwise_orthogonal mem_cat negb_or -!andbA; do !bool_congr.
+elim: R => [|phi R /= ->]; rewrite ?andbT // orthogonal_cons all_cat -!andbA /=.
+by do !bool_congr.
+Qed.
+
+
+
+Lemma orthonormal_cat R S :
+  orthonormal form (R ++ S) = [&& orthonormal form R, orthonormal form S & orthogonal form R S].
+Proof.
+rewrite !orthonormalE pairwise_orthogonal_cat all_cat -!andbA.
+by do !bool_congr.
+Qed.
+
 
 
 Lemma orthonormalP S :
@@ -777,6 +811,15 @@ apply: (iffP (pairwise_orthogonalP S)) => [] [uniqS oSS].
   by have [-> _ /normS/eqP | /oSS] := altP eqP.
 split=> // [|phi psi Sphi Spsi /negbTE]; last by rewrite oSS // => ->.
 by rewrite /= (contra (normS _)) // linear0r  eq_sym oner_eq0.
+Qed.
+
+
+
+Lemma sub_orthonormal S1 S2 :
+  {subset S1 <= S2} -> uniq S1 -> orthonormal form S2 -> orthonormal form S1.
+Proof.
+move=> sS12 uniqS1 /orthonormalP[_ oS1].
+by apply/orthonormalP; split; last apply: sub_in2 sS12 _ _.
 Qed.
 
 
@@ -800,6 +843,14 @@ Local Notation "''[' u , v ]" := (form u%R v%R) : ring_scope.
 Local Notation "''[' u ]" := '[u, u]%R : ring_scope.
 
 
+Lemma sub_pairwise_orthogonal S1 S2 :
+    {subset S1 <= S2} ->  uniq S1 ->
+  pairwise_orthogonal form S2 -> pairwise_orthogonal form S1.
+Proof.
+move=> sS12 uniqS1 /pairwise_orthogonalP[/andP[notS2_0 _] oS2].
+apply/pairwise_orthogonalP; rewrite /= (contra (sS12 0)) //.
+by split=> //; apply: sub_in2 oS2.
+Qed.
 
 Lemma orthogonal_free S : pairwise_orthogonal form S -> free  S.
 Proof.
@@ -813,6 +864,8 @@ rewrite addr0 linearZ mulf_eq0 conjC_eq0 dnorm_eq0.
 by case/pred2P=> // Si0; rewrite -Si0 S_i in notS0.
 Qed.
 
+Lemma orthonormal_free S : orthonormal form  S -> free S.
+Proof. by move/orthonormal_orthogonal/orthogonal_free. Qed.
 
 Theorem CauchySchwarz (u v : U) :
   `|'[u, v]| ^+ 2 <= '[u] * '[v] ?= iff ~~ free [:: u; v].
@@ -842,6 +895,57 @@ rewrite (mono_in_lerif (@ler_sqrtC _)) 1?rpredM ?qualifE;
 by rewrite ?normr_ge0 ?dnorm_ge0 //; apply: CauchySchwarz.
 Qed.
 
+Lemma orthoP phi psi : reflect ('[phi, psi] = 0) (orthogonal form  [:: phi] [:: psi]).
+Proof. by rewrite /orthogonal /= !andbT; apply: eqP. Qed.
+
+Lemma orthoPl phi S :
+  reflect {in S, forall psi, '[phi, psi] = 0} (orthogonal form [:: phi] S).
+Proof.
+by rewrite [orthogonal form _ S]andbT /=; apply: (iffP allP) => ophiS ? /ophiS/eqP.
+Qed.
+Arguments orthoPl [phi S].
+
+Lemma orthogonal_sym : symmetric (orthogonal form).
+Proof.
+apply: symmetric_from_pre => R S /orthogonalP oRS.
+by apply/orthogonalP=> phi psi Rpsi Sphi; rewrite hermC /= oRS  ?rmorph0 ?mulr0.
+Qed.
+
+Lemma orthoPr S psi :
+  reflect {in S, forall phi, '[phi, psi] = 0} (orthogonal form S [:: psi]).
+Proof.
+rewrite orthogonal_sym.
+by apply: (iffP orthoPl) => oSpsi phi Sphi; rewrite hermC /= oSpsi //= conjC0 mulr0.
+Qed.
+
+Lemma orthogonal_catl R1 R2 S :
+  orthogonal form (R1 ++ R2) S = orthogonal form R1 S && orthogonal form R2 S.
+Proof. exact: all_cat. Qed.
+
+Lemma orthogonal_catr R S1 S2 :
+  orthogonal form R (S1 ++ S2) = orthogonal form R S1 && orthogonal form R S2.
+Proof. by rewrite !(orthogonal_sym R) orthogonal_catl. Qed.
+
+Lemma eq_pairwise_orthogonal R S :
+  perm_eq R S -> pairwise_orthogonal form R = pairwise_orthogonal form  S.
+Proof.
+apply: catCA_perm_subst R S => R S S'.
+rewrite !pairwise_orthogonal_cat !orthogonal_catr (orthogonal_sym R S) -!andbA.
+by do !bool_congr.
+Qed.
+
+
+Lemma eq_orthonormal S0 S : perm_eq S0 S -> orthonormal form S0 = orthonormal form S.
+Proof.
+move=> eqRS; rewrite !orthonormalE (eq_all_r (perm_eq_mem eqRS)).
+by rewrite (eq_pairwise_orthogonal eqRS).
+Qed.
+
+
+Lemma orthogonal_oppl S R : orthogonal form  (map -%R S) R = orthogonal form S R.
+Proof. by rewrite -!(orthogonal_sym R) orthogonal_oppr. Qed.
+
+
 Lemma triangle_lerif u v :
   sqrtC '[u + v] <= sqrtC '[u] + sqrtC '[v]
            ?= iff ~~ free [:: u; v] && (0 <= coord [tuple v] 0 u).
@@ -858,7 +962,42 @@ case/vlineP=> [x ->]; rewrite linearZl_LR linearZ pmulr_lge0 ?dnorm_gt0 //=.
 by rewrite (coord_free 0) ?seq1_free // eqxx mulr1.
 Qed.
 
+Lemma span_orthogonal S1 S2 phi1 phi2 :
+    orthogonal form S1 S2 -> phi1 \in <<S1>>%VS -> phi2 \in <<S2>>%VS ->
+ '[phi1, phi2] = 0.
+Proof.
+move/orthogonalP=> oS12; do 2!move/(@coord_span _ _ _ (in_tuple _))->.
+rewrite linear_suml big1 // => i _; rewrite linear_sumr big1 // => j _.
+by rewrite linearZl_LR linearZ /= oS12 ?mem_nth ?mulr0.
+Qed.
+
+Lemma orthogonal_split S beta :
+  {X: U  & X \in <<S>>%VS &
+      {Y:U | [/\ beta = X + Y, '[X, Y] = 0 & orthogonal form  [:: Y]  S]}}.
+Proof.
+suffices [X S_X [Y -> oYS]]:
+  {X : _ & X \in <<S>>%VS & {Y | beta = X + Y & orthogonal form [:: Y] S}}.
+- exists X => //; exists Y.
+  by rewrite hermC /= (span_orthogonal oYS) ?memv_span1 ?conjC0 // mulr0.
+elim: S beta => [|phi S IHS] beta.
+  by exists 0; last exists beta; rewrite ?mem0v ?add0r.
+have [[UU S_U [V -> oVS]] [X S_X [Y -> oYS]]] := (IHS phi, IHS beta).
+pose Z := '[Y, V] / '[V] *: V; exists (X + Z).
+  rewrite /Z -{4}(addKr UU V) scalerDr scalerN addrA addrC span_cons.
+  by rewrite memv_add ?memvB ?memvZ ?memv_line.
+exists (Y - Z); first by rewrite addrCA !addrA addrK addrC.
+apply/orthoPl=> psi; rewrite !inE => /predU1P[-> | Spsi]; last first.
+  by rewrite linearBl linearZl_LR /= (orthoPl oVS _ Spsi) mulr0 subr0 (orthoPl oYS).
+rewrite linearBl !linearDr /= (span_orthogonal oYS) // ?memv_span ?mem_head //.
+rewrite !linearZl_LR /= (span_orthogonal oVS _ S_U) ?mulr0 ?memv_span ?mem_head //.
+have [-> | nzV] := eqVneq V 0; first by rewrite linear0r !mul0r subrr.
+by rewrite divfK ?dnorm_eq0 ?subrr.
+Qed.
+
 End DotFinVectTheory.
+
+
+
 
 Local Notation "u '``_' i" := (u (GRing.zero (Zp_zmodType O)) i) : ring_scope.
 Local Notation "''e_' i" := (delta_mx 0 i)

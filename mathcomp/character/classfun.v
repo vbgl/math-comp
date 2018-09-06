@@ -408,6 +408,10 @@ Notation "''CF' ( G , A )" := (classfun_on G A) : ring_scope.
 Notation "1" := (@GRing.one (cfun_ringType _)) (only parsing) : cfun_scope.
 
 Notation isometry := (isometry [hermitian of @cfdot _ _ ][hermitian of @cfdot _ _ ]).
+Notation "{ 'in' D , 'isometry' tau , 'to' R }" :=
+    (isometry_from_to [hermitian of @cfdot _ _]  [hermitian of @cfdot _ _] (mem D) tau (mem R))
+  (at level 0, format "{ 'in'  D ,  'isometry'  tau ,  'to'  R }")
+     : type_scope.
 
 Notation "phi ^*" := (cfAut conjC phi) : cfun_scope.
 Notation cfConjC_closed := (cfAut_closed conjC).
@@ -789,6 +793,13 @@ Lemma cfdotEr A phi psi :
   '[phi, psi] = #|G|%:R^-1 * \sum_(x in A) phi x * (psi x)^*.
 Proof. by move=> Apsi; rewrite (cfdotElr (cfun_onT phi) Apsi) setTI. Qed.
 
+Lemma cfdot_complement A phi psi :
+  phi \in 'CF(G, A) -> psi \in 'CF(G, G :\: A) -> '[phi, psi] = 0.
+Proof.
+move=> Aphi A'psi; rewrite (cfdotElr Aphi A'psi).
+by rewrite setDE setICA setICr setI0 big_set0 mulr0.
+Qed.
+
 Lemma cfdotr_is_linear xi : linear (cfdotr xi : 'CF(G) -> algC^o).
 Proof.
 move=> a phi psi; rewrite scalerAr -mulrDr; congr (_ * _).
@@ -830,6 +841,15 @@ by apply: eq_bigr => x Gx; rewrite !cfunE rmorphM uC ?map_f ?mem_enum.
 Qed.
 
 
+Lemma cfdot_conjC phi psi : '[phi^*, psi^*] = '[phi, psi]^*.
+Proof. by rewrite cfdot_cfAut. Qed.
+
+Lemma cfdot_conjCl phi psi : '[phi^*, psi] = '[phi, psi^*]^*.
+Proof. by rewrite -cfdot_conjC cfConjCK. Qed.
+
+Lemma cfdot_conjCr phi psi : '[phi, psi^*] = '[phi^*, psi]^*.
+Proof. by rewrite -cfdot_conjC cfConjCK. Qed.
+
 Lemma cfnorm_ge0 phi : 0 <= '[phi].
 Proof.
 by rewrite mulr_ge0 ?invr_ge0 ?ler0n ?sumr_ge0 // => x _; apply: mul_conjC_ge0.
@@ -846,6 +866,8 @@ Qed.
 Lemma cfnorm_gt0 phi : ('[phi] > 0) = (phi != 0).
 Proof. by rewrite ltr_def cfnorm_ge0 cfnorm_eq0 andbT. Qed.
 
+Lemma cfnorm_conjC phi : '[phi^*] = '[phi].
+Proof. by rewrite cfdot_conjC geC0_conj // cfnorm_ge0. Qed.
 
 End DotProduct.
 
@@ -927,42 +949,13 @@ Implicit Types (U : pred 'CF(L)) (W : pred 'CF(G)).
 Notation pairwise_orthogonal := (pairwise_orthogonal [hermitian of @cfdot _ _]).
 Notation pairwise_orthogonalP := (pairwise_orthogonalP [dot of @cfdot _ _]).
 
-(* Lemma isometry_of_cfnorm S tauS : *)
-(*     pairwise_orthogonal S -> pairwise_orthogonal tauS -> *)
-(*     map cfnorm tauS = map cfnorm S -> *)
-(*   {tau : {linear 'CF(L) -> 'CF(G)} | map tau S = tauS *)
-(*                                    & {in <<S>>%VS &, isometry tau}}. *)
-(* Proof. *)
-(* move=> oS oT eq_nST; have freeS := orthogonal_free oS. *)
-(* have eq_sz: size tauS = size S by have:= congr1 size eq_nST; rewrite !size_map. *)
-(* have [tau defT] := linear_of_free S tauS; rewrite -[S]/(tval (in_tuple S)). *)
-(* exists tau => [|u v /coord_span-> /coord_span->]; rewrite ?raddf_sum ?defT //=. *)
-(* apply: eq_bigr => i _ /=; rewrite linearZ !linearZ /= !linear_suml; congr (_ * _). *)
-(* apply: eq_bigr => j _ /=; rewrite linearZ !linearZl_LR; congr (_ * _). *)
-(* rewrite -!(nth_map 0 0 tau) ?{}defT //; have [-> | neq_ji] := eqVneq j i. *)
-(*   by rewrite /=  -!['[_]](nth_map 0 0 cfnorm) ?eq_sz // eq_nST. *)
-(* have{oS} [/=/andP[_ uS] oS] := pairwise_orthogonalP _ oS. *)
-(* have{oT} [/=/andP[_ uT] oT] := pairwise_orthogonalP _ oT. *)
-(* by rewrite oS ?oT ?mem_nth ?nth_uniq ?eq_sz. *)
-(* Qed. *)
 
-(* (* hugly : ask Cyril*) *)
-(* Lemma isometry_of_free S f : *)
-(*     free S -> {in S &, isometry f} -> *)
-(*   {tau : {linear 'CF(L) -> 'CF(G)} | *)
-(*     {in S, tau =1 f} & {in <<S>>%VS &, isometry tau}}. *)
-(* Proof. *)
-(* move=> freeS If; have defS := free_span freeS. *)
-(* have [tau /(_ freeS (size_map f S))Dtau] := linear_of_free S (map f S). *)
-(* have{Dtau} Dtau: {in S, tau =1 f}. *)
-(*   by move=> _ /(nthP 0)[i ltiS <-]; rewrite -!(nth_map 0 0) ?Dtau. *)
-(* exists tau => // _ _ /defS[a -> _] /defS[b -> _] /=. *)
-(* rewrite  2!{1}linear_sum /= !{1}linear_suml /=;  apply/eq_big_seq=> xi1 Sxi1. *)
-(* rewrite !{1}linear_sumr; apply/eq_big_seq=> xi2 Sxi2 /=. *)
-(* rewrite 2!linearZ /=  !Dtau // 2!linearZl_LR /= [X in _ *: X]linearZ /= If //=. *)
-(* by rewrite ['[xi1, b xi2 *: xi2]]linearZ. *)
-(* Qed. *)
-
+Lemma sub_iso_to U1 U2 W1 W2 tau :
+    {subset U2 <= U1} -> {subset W1 <= W2} ->
+  {in U1, isometry tau, to W1} -> {in U2, isometry tau, to W2}.
+Proof.
+by move=> sU sW [Itau Wtau]; split=> [|u /sU/Wtau/sW //]; apply: sub_in2 Itau.
+Qed.
 
 Lemma isometry_raddf_inj U (tau : {additive 'CF(L) -> 'CF(G)}) :
     {in U &, isometry tau} -> {in U &, forall u v, u - v \in U} ->
@@ -973,6 +966,36 @@ by rewrite -cfnorm_eq0 Itau ?linU // cfnorm_eq0 subr_eq0 => /eqP.
 Qed.
 
 
+
+
+
+Lemma sub_pairwise_orthogonal S1 S2 :
+    {subset S1 <= S2} ->  uniq S1 ->
+  pairwise_orthogonal S2 -> pairwise_orthogonal S1.
+Proof.
+move=> sS12 uniqS1 /pairwise_orthogonalP[/andP[notS2_0 _] oS2].
+apply/pairwise_orthogonalP; rewrite /= (contra (sS12 0)) //.
+by split=> //; apply: sub_in2 oS2.
+Qed.
+
+Lemma conjC_pair_orthogonal S chi :
+    cfConjC_closed S -> ~~ has cfReal S -> pairwise_orthogonal S -> chi \in S ->
+  pairwise_orthogonal (chi :: chi^*%CF).
+Proof.
+move=> ccS /hasPn nrS oSS Schi; apply: sub_pairwise_orthogonal oSS.
+  by apply/allP; rewrite /= Schi ccS.
+by rewrite /= inE eq_sym nrS.
+Qed.
+
+Lemma extend_cfConjC_subset S X phi :
+    cfConjC_closed S -> ~~ has cfReal S -> phi \in S -> phi \notin X ->
+  cfConjC_subset X S -> cfConjC_subset [:: phi, phi^* & X]%CF S.
+Proof.
+move=> ccS nrS Sphi X'phi [uniqX /allP-sXS ccX].
+split; last 1 [by apply/allP; rewrite /= Sphi ccS | apply/allP]; rewrite /= inE.
+  by rewrite negb_or X'phi eq_sym (hasPn nrS) // (contra (ccX _)) ?cfConjCK.
+by rewrite cfConjCK !mem_head orbT; apply/allP=> xi Xxi; rewrite !inE ccX ?orbT.
+Qed.
 
 End BuildIsometries.
 
