@@ -417,7 +417,7 @@ Notation "phi ^*" := (cfAut conjC phi) : cfun_scope.
 Notation cfConjC_closed := (cfAut_closed conjC).
 Prenex Implicits cfReal.
 (* Workaround for overeager projection reduction. *)
-(* Notation eqcfP := (@eqP (cfun_eqType _) _ _) (only parsing). *)
+Notation eqcfP := (@eqP (cfun_eqType _) _ _) (only parsing).
 
 Notation "#[ phi ]" := (cforder phi) : cfun_scope.
 Notation "''[' u , v ]_ G":=  (@cfdot _ G u v) (only parsing) : ring_scope.
@@ -822,8 +822,16 @@ rewrite /cfdot rmorphM fmorphV rmorph_nat rmorph_sum; congr (_ * _).
 by apply: eq_bigr=> x _; rewrite rmorphM conjCK mulrC.
 Qed.
 
+Lemma eq_cfdotl A phi1 phi2 psi :
+  psi \in 'CF(G, A) -> {in A, phi1 =1 phi2} -> '[phi1, psi] = '[phi2, psi].
+Proof.
+move/cfdotEr=> eq_dot eq_phi; rewrite !eq_dot; congr (_ * _).
+by apply: eq_bigr => x Ax; rewrite eq_phi.
+Qed.
 
- 
+ Lemma eq_cfdotr A phi psi1 psi2 :
+  phi \in 'CF(G, A) -> {in A, psi1 =1 psi2} -> '[phi, psi1] = '[phi, psi2].
+Proof. by move=> Aphi /eq_cfdotl eq_dot; rewrite cfdotC eq_dot // -cfdotC. Qed.
 
 Lemma cfdotBr xi phi psi : '[xi, phi - psi] = '[xi, phi] - '[xi, psi].
 Proof. by rewrite !(cfdotC xi) -rmorphB cfdotBl. Qed.
@@ -849,6 +857,9 @@ Proof. by rewrite -cfdot_conjC cfConjCK. Qed.
 
 Lemma cfdot_conjCr phi psi : '[phi, psi^*] = '[phi^*, psi]^*.
 Proof. by rewrite -cfdot_conjC cfConjCK. Qed.
+
+Lemma cfdot_real_conjC phi psi : cfReal phi -> '[phi, psi^*]_G = '[phi, psi]^*.
+Proof. by rewrite -cfdot_conjC => /eqcfP->. Qed.
 
 Lemma cfnorm_ge0 phi : 0 <= '[phi].
 Proof.
@@ -986,6 +997,8 @@ move=> ccS /hasPn nrS oSS Schi; apply: sub_pairwise_orthogonal oSS.
   by apply/allP; rewrite /= Schi ccS.
 by rewrite /= inE eq_sym nrS.
 Qed.
+
+
 
 Lemma extend_cfConjC_subset S X phi :
     cfConjC_closed S -> ~~ has cfReal S -> phi \in S -> phi \notin X ->
@@ -1801,6 +1814,10 @@ move=> isoG phi psi; rewrite unlock cfMorph_iso //=; set G1 := _ @* R.
 by rewrite  -(isom_im (isom_sym isoG)) -/G1 in phi psi *; rewrite !cfRes_id.
 Qed.
 
+Lemma cfMod_iso H G : H <| G -> isometry (@cfMod _ G H).
+Proof. by case/andP=> _; apply: cfMorph_iso. Qed.
+
+
 Lemma cfSdprod_iso K H G (defG : K ><| H = G) : isometry (cfSdprod defG).
 Proof.
 move=> phi psi; have [/andP[_ nKG] _ _ _ _] := sdprod_context defG.
@@ -1912,6 +1929,12 @@ move=> nsHG; have [sHG nHG] := andP nsHG; rewrite natf_indexg // mulrC.
 apply/cfunP=> x; rewrite cfIndE ?cfunE ?cfuniE // -mulrA; congr (_ * _).
 rewrite mulr_natl -sumr_const; apply: eq_bigr => y Gy.
 by rewrite cfun1E -{1}(normsP nHG y Gy) memJ_conjg.
+Qed.
+
+Lemma cfnorm_Ind_cfun1 : H <| G -> '['Ind[G, H] 1] = #|G : H|%:R.
+Proof.
+move=> nsHG; rewrite cfInd_cfun1 // dnormZ normr_nat /= cfdot_cfuni // setIid.
+by rewrite expr2 {2}natf_indexg ?normal_sub // !mulrA divfK ?mulfK ?neq0CG.
 Qed.
 
 Lemma cfIndInd phi :

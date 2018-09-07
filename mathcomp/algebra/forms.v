@@ -852,6 +852,8 @@ apply/pairwise_orthogonalP; rewrite /= (contra (sS12 0)) //.
 by split=> //; apply: sub_in2 oS2.
 Qed.
 
+
+
 Lemma orthogonal_free S : pairwise_orthogonal form S -> free  S.
 Proof.
 case/pairwise_orthogonalP=> [/=/andP[notS0 uniqS] oSS].
@@ -862,6 +864,14 @@ rewrite -{2}aS0 raddf_sum /= (bigD1 i) //= big1 => [|j neq_ji]; last 1 first.
   by rewrite linearZ /= oSS ?mulr0 ?mem_nth // eq_sym nth_uniq.
 rewrite addr0 linearZ mulf_eq0 conjC_eq0 dnorm_eq0.
 by case/pred2P=> // Si0; rewrite -Si0 S_i in notS0.
+Qed.
+
+Lemma filter_pairwise_orthogonal S p : 
+  pairwise_orthogonal form S -> pairwise_orthogonal form (filter p S).
+Proof.
+move=> orthoS; apply: sub_pairwise_orthogonal (orthoS).
+  exact: mem_subseq (filter_subseq p S).
+exact/filter_uniq/free_uniq/orthogonal_free.
 Qed.
 
 Lemma orthonormal_free S : orthonormal form  S -> free S.
