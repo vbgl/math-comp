@@ -64,7 +64,7 @@ apply/idP/idP=> [pr_p | dv_pF]; last first.
   by rewrite orbC -addn1 dvdn_addr ?dvdn_mulr // dvdn1 => ->.
 pose Fp1 := Ordinal lt1p; pose Fp0 := Ordinal p_gt0.
 have ltp1p: p.-1 < p by [rewrite prednK]; pose Fpn1 := Ordinal ltp1p.
-case eqF1n1: (Fp1 == Fpn1); first by rewrite -{1}[p]prednK -1?((1 =P p.-1) _).
+case eqF1n1: (!! Fp1 == Fpn1); first by rewrite -{1}[p]prednK -1?((1 =P p.-1) _). (* FIXME !! *)
 have toFpP m: m %% p < p by rewrite ltn_mod.
 pose toFp := Ordinal (toFpP _); pose mFp (i j : 'I_p) := toFp (i * j).
 have Fp_mod (i : 'I_p) : i %% p = i by apply: modn_small.
@@ -300,7 +300,7 @@ Definition expnDn := Pascal.
 Lemma Vandermonde k l i :
   \sum_(j < i.+1) 'C(k, j) * 'C(l, i - j) = 'C(k + l , i).
 Proof.
-pose f k i := \sum_(j < i.+1) 'C(k, j) * 'C(l, i - j).
+pose f k i := !! \sum_(j < i.+1) 'C(k, j) * 'C(l, i - j). (* FIXME !! *)
 suffices{k i} fxx k i: f k.+1 i.+1 = f k i.+1 + f k i.
   elim: k i => [i | k IHk [|i]]; last by rewrite -/(f _ _) fxx /f !IHk -binS.
     by rewrite big_ord_recl big1_eq addn0 mul1n subn0.
@@ -340,13 +340,11 @@ Qed.
 
 Section Combinations.
 
-Implicit Types T D : finType.
-
-Lemma card_uniq_tuples T n (A : pred T) :
+Lemma card_uniq_tuples T {fT: finClass T} n (A : pred T) :
   #|[set t : n.-tuple T | all A t & uniq t]| = #|A| ^_ n.
 Proof.
 elim: n A => [|n IHn] A.
-  by rewrite (@eq_card1 _ [tuple]) // => t; rewrite [t]tuple0 inE.
+  by rewrite (@eq_card1 _ _ [tuple]) // => t; rewrite [t]tuple0 inE.
 rewrite -sum1dep_card (partition_big (@thead _ _) A) /= => [|t]; last first.
   by case/tupleP: t => x t; do 2!case/andP.
 transitivity (#|A| * #|A|.-1 ^_ n)%N; last by case: #|A|.
@@ -360,25 +358,25 @@ apply: eq_bigl=> t; rewrite Ax theadE eqxx andbT /= andbA; congr (_ && _).
 by rewrite all_predI all_predC has_pred1 andbC.
 Qed.
 
-Lemma card_inj_ffuns_on D T (R : pred T) :
+Lemma card_inj_ffuns_on (D: predArgType) {fD: finClass D} T {fT: finClass T} (R : pred T) :
   #|[set f : {ffun D -> T} in ffun_on R | injectiveb f]| = #|R| ^_ #|D|.
 Proof.
 rewrite -card_uniq_tuples.
-have bijFF: {on (_ : pred _), bijective (@Finfun D T)}.
+have bijFF: {on (_ : pred _), bijective (@Finfun D _ T)}.
   by exists val => // x _; apply: val_inj.
 rewrite -(on_card_preimset (bijFF _)); apply: eq_card => t.
 rewrite !inE -(codom_ffun (Finfun t)); congr (_ && _); apply: negb_inj.
 by rewrite -has_predC has_map enumT has_filter -size_eq0 -cardE.
 Qed.
 
-Lemma card_inj_ffuns D T :
+Lemma card_inj_ffuns (D: predArgType) {fD: finClass D} (T: predArgType) {fT: finClass T} :
   #|[set f : {ffun D -> T} | injectiveb f]| = #|T| ^_ #|D|.
 Proof.
 rewrite -card_inj_ffuns_on; apply: eq_card => f.
 by rewrite 2!inE; case: ffun_onP.
 Qed.
 
-Lemma cards_draws T (B : {set T}) k :
+Lemma cards_draws T {fT: finClass T} (B : {set T}) k :
   #|[set A : {set T} | A \subset B & #|A| == k]| = 'C(#|B|, k).
 Proof.
 have [ltTk | lekT] := ltnP #|B| k.
@@ -389,7 +387,7 @@ have [ltTk | lekT] := ltnP #|B| k.
 apply/eqP; rewrite -(eqn_pmul2r (fact_gt0 k)) bin_ffact // eq_sym.
 rewrite -sum_nat_dep_const -{1 3}(card_ord k).
 rewrite -card_inj_ffuns_on -sum1dep_card.
-pose imIk (f : {ffun 'I_k -> T}) := f @: 'I_k.
+pose imIk := !! fun (f : {ffun 'I_k -> T}) => f @: 'I_k. (* FIXME !! *)
 rewrite (partition_big imIk (fun A => (A \subset B) && (#|A| == k))) /=
   => [|f]; last first.
   move=> /andP [/ffun_onP f_ffun /injectiveP inj_f].
@@ -401,7 +399,7 @@ have [f0 inj_f0 im_f0]: exists2 f, injective f & f @: 'I_k = A.
   apply/setP=> a; apply/imsetP/idP=> [[i _ ->] | Aa]; first exact: enum_valP.
   by exists (enum_rank_in Aa a); rewrite ?enum_rankK_in.
 rewrite (reindex (fun p : {ffun _} => [ffun i => f0 (p i)])) /=; last first.
-  pose ff0' f i := odflt i [pick j | f i == f0 j].
+  pose ff0' f i := !! odflt i [pick j | f i == f0 j]. (* FIXME !! *)
   exists (fun f => [ffun i => ff0' f i]) => [p _ | f].
     apply/ffunP=> i; rewrite ffunE /ff0'; case: pickP => [j | /(_ (p i))].
       by rewrite ffunE (inj_eq inj_f0) => /eqP.
@@ -424,20 +422,21 @@ apply/ffun_onP => x; apply: (subsetP AsubB).
 by rewrite -(eqP imIkf) mem_imset.
 Qed.
 
-Lemma card_draws T k : #|[set A : {set T} | #|A| == k]| = 'C(#|T|, k).
+Lemma card_draws (T: predArgType) {fT: finClass T} k : #|[set A : {set T} | #|A| == k]| = 'C(#|T|, k).
 Proof.
 by rewrite -cardsT -cards_draws; apply: eq_card => A; rewrite !inE subsetT.
 Qed.
 
+(* FIXME
 Lemma card_ltn_sorted_tuples m n :
   #|[set t : m.-tuple 'I_n | sorted ltn (map val t)]| = 'C(n, m).
 Proof.
 have [-> | n_gt0] := posnP n; last pose i0 := Ordinal n_gt0.
-  case: m => [|m]; last by apply: eq_card0; case/tupleP=> [[]].
-  by apply: (@eq_card1 _ [tuple]) => t; rewrite [t]tuple0 inE.
-rewrite -{12}[n]card_ord -card_draws.
-pose f_t (t : m.-tuple 'I_n) := [set i in t].
-pose f_A (A : {set 'I_n}) := [tuple of mkseq (nth i0 (enum A)) m].
+  case: m => [|m]; last by apply eq_card0; case/tupleP=> [[]]. (* FIXME apply vs apply: *)
+  by apply (@eq_card1 _ _ [tuple]) => t; rewrite [t]tuple0 inE. (* FIXME apply vs apply: *)
+rewrite -[n](card_ord) -card_draws.
+pose f_t (t : m.-tuple 'I_n) := !! [set i in t]. (* FIXME !! *)
+pose f_A := !! fun (A : {set 'I_n}) => [tuple of mkseq (nth i0 (enum A)) m]. (* FIXME !! *)
 have val_fA (A : {set 'I_n}) : #|A| = m -> val (f_A A) = enum A.
   by move=> Am; rewrite -[enum _](mkseq_nth i0) -cardE Am.
 have inc_A (A : {set 'I_n}) : sorted ltn (map val (enum A)).
@@ -445,6 +444,13 @@ have inc_A (A : {set 'I_n}) : sorted ltn (map val (enum A)).
   rewrite -(eq_filter (mem_map val_inj _)) -filter_map.
   by rewrite (sorted_filter ltn_trans) // unlock val_ord_enum iota_ltn_sorted.
 rewrite -!sum1dep_card (reindex_onto f_t f_A) /= => [|A]; last first.
+  have ? : finClass 'I_n by typeclasses eauto.
+  move/eqP=> cardAm; apply/setP=> x. rewrite inE. rewrite -(mem_enum (mem A)).
+  move: (val_fA A cardAm).
+  done.
+  exact. apply.
+  auto.
+  rewrite -(val_fA A).
   by move/eqP=> cardAm; apply/setP=> x; rewrite inE -(mem_enum (mem A)) -val_fA.
 apply: eq_bigl => t; apply/idP/idP=> [inc_t|]; last first.
   by case/andP; move/eqP=> t_m; move/eqP=> <-; rewrite val_fA.
@@ -544,6 +550,7 @@ exists (fun t : m.+1.-tuple In1 => [tuple of behead t]) => [t _|].
 case/tupleP=> x t; rewrite inE /= big_cons => /eqP def_n.
 by apply: val_inj; congr (_ :: _); apply: val_inj; rewrite /= -{1}def_n addnK.
 Qed.
+*)
 
 End Combinations.
 

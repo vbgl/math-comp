@@ -271,10 +271,9 @@ Arguments has_tnthP {n T a t}.
 
 Section EqTuple.
 
-Variables (n : nat) (T : eqType).
+Context (n : nat) T {cT: eqClass T}.
 
-Definition tuple_eqMixin := Eval hnf in [eqMixin of n.-tuple T by <:].
-Canonical tuple_eqType := Eval hnf in EqType (n.-tuple T) tuple_eqMixin.
+Global Instance tuple_eqClass : eqClass (n.-tuple T) := _.
 
 Canonical tuple_predType :=
   Eval hnf in mkPredType (fun t : n.-tuple T => mem_seq t).
@@ -296,39 +295,38 @@ Qed.
 
 Lemma seq_tnthP (s : seq T) x : x \in s -> {i | x = tnth (in_tuple s) i}.
 Proof.
-move=> s_x; pose i := index x s; have lt_i: i < size s by rewrite index_mem.
+  (* FIXME: !! *)
+move=> s_x; pose i := !! index x s; have lt_i: i < size s by rewrite index_mem.
 by exists (Ordinal lt_i); rewrite (tnth_nth x) nth_index.
 Qed.
 
 End EqTuple.
 
-Definition tuple_choiceMixin n (T : choiceType) :=
-  [choiceMixin of n.-tuple T by <:].
+Global Instance tuple_choiceClass n T (cT: choiceClass T) : choiceClass (n.-tuple T) := _.
 
-Canonical tuple_choiceType n (T : choiceType) :=
-  Eval hnf in ChoiceType (n.-tuple T) (tuple_choiceMixin n T).
-
-Definition tuple_countMixin n (T : countType) :=
+Definition tuple_countMixin n T {cT: countClass T} :=
   [countMixin of n.-tuple T by <:].
 
-Canonical tuple_countType n (T : countType) :=
-  Eval hnf in CountType (n.-tuple T) (tuple_countMixin n T).
+Global Instance tuple_countClass n T (cT: countClass T) : countClass (n.-tuple T) :=
+  Countable.Class (tuple_countMixin n).
 
+(* FIXME
 Canonical tuple_subCountType n (T : countType) :=
   Eval hnf in [subCountType of n.-tuple T].
+*)
 
 Module Type FinTupleSig.
 Section FinTupleSig.
-Variables (n : nat) (T : finType).
-Parameter enum : seq (n.-tuple T).
-Axiom enumP : Finite.axiom enum.
-Axiom size_enum : size enum = #|T| ^ n.
+Context (n : nat) (T: predArgType).
+Parameter enum : finClass T -> seq (n.-tuple T).
+Axiom enumP : forall fT: finClass T, Finite.axiom (enum fT).
+Axiom size_enum : forall fT: finClass T, size (enum fT) = #|T| ^ n.
 End FinTupleSig.
 End FinTupleSig.
 
 Module FinTuple : FinTupleSig.
 Section FinTuple.
-Variables (n : nat) (T : finType).
+Context (n : nat) (T: predArgType) {fT: finClass T}.
 
 Definition enum : seq (n.-tuple T) :=
   let extend e := flatten (codom (fun x => map (cons x) e)) in
@@ -336,12 +334,14 @@ Definition enum : seq (n.-tuple T) :=
 
 Lemma enumP : Finite.axiom enum.
 Proof.
-case=> /= t t_n; rewrite -(count_map _ (pred1 t)) (pmap_filter (insubK _)).
+  (* FIXME: !!, @tval, enum *)
+(* case=> /= t t_n; rewrite -(count_map _ (pred1 t)) (pmap_filter (insubK _)). *)
+case=> /= t t_n; rewrite -( !! count_map (@tval _ _) (pred1 t) enum) (pmap_filter (insubK _)).
 rewrite count_filter -(@eq_count _ (pred1 t)) => [|s /=]; last first.
   by rewrite isSome_insub; case: eqP=> // ->.
 elim: n t t_n => [|m IHm] [|x t] //= {IHm}/IHm; move: (iter m _ _) => em IHm.
 transitivity (x \in T : nat); rewrite // -mem_enum codomE.
-elim: (fintype.enum T)  (enum_uniq T) => //= y e IHe /andP[/negPf ney].
+elim: (fintype.enum T)  (!! enum_uniq T) => //= y e IHe /andP[/negPf ney]. (* FIXME !! *)
 rewrite count_cat count_map inE /preim /= {1}/eq_op /= eq_sym => /IHe->.
 by case: eqP => [->|_]; rewrite ?(ney, count_pred0, IHm).
 Qed.
@@ -358,16 +358,17 @@ End FinTuple.
 
 Section UseFinTuple.
 
-Variables (n : nat) (T : finType).
+Context (n : nat) (T: predArgType) {fT: finClass T}.
 
 (* tuple_finMixin could, in principle, be made Canonical to allow for folding *)
 (* Finite.enum of a finite tuple type (see comments around eqE in eqtype.v),  *)
 (* but in practice it will not work because the mixin_enum projector          *)
 (* has been burried under an opaque alias, to avoid some performance issues   *)
 (* during type inference.                                                     *)
-Definition tuple_finMixin := Eval hnf in FinMixin (@FinTuple.enumP n T).
-Canonical tuple_finType := Eval hnf in FinType (n.-tuple T) tuple_finMixin.
-Canonical tuple_subFinType := Eval hnf in [subFinType of n.-tuple T].
+Canonical tuple_finMixin :=
+  Eval hnf in Finite.Mixin (tuple_countMixin n) (@FinTuple.enumP n T fT).
+Global Instance tuple_finClass : finClass (n.-tuple T) := @Finite.Class _ (tuple_choiceClass n _) tuple_finMixin.
+(* Canonical tuple_subFinType := Eval hnf in [subFinType of n.-tuple T]. *)
 
 Lemma card_tuple : #|{:n.-tuple T}| = #|T| ^ n.
 Proof. by rewrite [#|_|]cardT enumT unlock FinTuple.size_enum. Qed.

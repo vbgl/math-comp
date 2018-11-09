@@ -105,7 +105,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Section SetType.
 
-Variable T : finType.
+Context T {fT: finClass T}.
 
 Inductive set_type : predArgType := FinSet of {ffun pred T}.
 Definition finfun_of_set A := let: FinSet f := A in f.
@@ -113,16 +113,17 @@ Definition set_of of phant T := set_type.
 Identity Coercion type_of_set_of : set_of >-> set_type.
 
 Canonical set_subType := Eval hnf in [newType for finfun_of_set].
-Definition set_eqMixin := Eval hnf in [eqMixin of set_type by <:].
-Canonical set_eqType := Eval hnf in EqType set_type set_eqMixin.
+Global Instance set_eqClass : eqClass set_type := _.
 Definition set_choiceMixin := [choiceMixin of set_type by <:].
-Canonical set_choiceType := Eval hnf in ChoiceType set_type set_choiceMixin.
+Global Instance set_choiceClass : choiceClass set_type := Choice.Class set_choiceMixin.
 Definition set_countMixin := [countMixin of set_type by <:].
-Canonical set_countType := Eval hnf in CountType set_type set_countMixin.
+Global Instance set_countClass : countClass set_type := Countable.Class set_countMixin.
+(* FIXME
 Canonical set_subCountType := Eval hnf in [subCountType of set_type].
-Definition set_finMixin := [finMixin of set_type by <:].
-Canonical set_finType := Eval hnf in FinType set_type set_finMixin.
-Canonical set_subFinType := Eval hnf in [subFinType of set_type].
+*)
+Definition set_finMixin : Finite.mixin_of set_type := SubFinMixin (SubCountType set_countMixin).
+Global Instance set_finClass : finClass set_type := Finite.Class set_finMixin.
+(* Canonical set_subFinType := Eval hnf in [subFinType of set_type]. *)
 
 End SetType.
 
@@ -130,7 +131,8 @@ Delimit Scope set_scope with SET.
 Bind Scope set_scope with set_type.
 Bind Scope set_scope with set_of.
 Open Scope set_scope.
-Arguments finfun_of_set {T} A%SET.
+Arguments set_type T {fT}.
+Arguments finfun_of_set {T fT} A%SET.
 
 Notation "{ 'set' T }" := (set_of (Phant T))
   (at level 0, format "{ 'set'  T }") : type_scope.
@@ -151,13 +153,13 @@ Notation "A :!=: B" := (A != B :> {set _})
 Notation "A :=P: B" := (A =P B :> {set _})
   (at level 70, no associativity, only parsing) : set_scope.
 
-Local Notation finset_def := (fun T P => @FinSet T (finfun P)).
+Local Notation finset_def := (fun T fT P => @FinSet T fT (finfun P)).
 
-Local Notation pred_of_set_def := (fun T (A : set_type T) => val A : _ -> _).
+Local Notation pred_of_set_def := (fun T {fT: finClass T} (A : set_type T) => val A : _ -> _).
 
 Module Type SetDefSig.
-Parameter finset : forall T : finType, pred T -> {set T}.
-Parameter pred_of_set : forall T, set_type T -> fin_pred_sort (predPredType T).
+Parameter finset : forall T {fT: finClass T}, pred T -> {set T}.
+Parameter pred_of_set : forall T {fT: finClass T}, set_type T -> fin_pred_sort (predPredType T).
 (* The weird type of pred_of_set is imposed by the syntactic restrictions on  *)
 (* coercion declarations; it is unfortunately not possible to use a functor   *)
 (* to retype the declaration, because this triggers an ugly bug in the Coq    *)
@@ -206,21 +208,25 @@ Coercion pred_of_set: set_type >-> fin_pred_sort.
 
 (* Declare pred_of_set as a canonical instance of topred, but use the         *)
 (* coercion to resolve mem A to @mem (predPredType T) (pred_of_set A).        *)
-Canonical set_predType T :=
-  Eval hnf in @mkPredType _ (unkeyed (set_type T)) (@pred_of_set T).
+Canonical set_predType T {fT: finClass T} :=
+  Eval hnf in @mkPredType _ (unkeyed (set_type T)) (@pred_of_set T fT).
 
 Section BasicSetTheory.
 
-Variable T : finType.
+Context T {fT: finClass T}.
 Implicit Types (x : T) (A B : {set T}) (pA : pred T).
 
 Canonical set_of_subType := Eval hnf in [subType of {set T}].
-Canonical set_of_eqType := Eval hnf in [eqType of {set T}].
-Canonical set_of_choiceType := Eval hnf in [choiceType of {set T}].
-Canonical set_of_countType := Eval hnf in [countType of {set T}].
+Global Instance set_of_eqClass : eqClass {set T} := _.
+Global Instance set_of_choiceClass : choiceClass {set T} := _.
+Global Instance set_of_countClass : countClass {set T} := _.
+(* FIXME
 Canonical set_of_subCountType := Eval hnf in [subCountType of {set T}].
-Canonical set_of_finType := Eval hnf in [finType of {set T}].
+*)
+Global Instance set_of_finClass : finClass {set T} := _.
+(* FIXME
 Canonical set_of_subFinType := Eval hnf in [subFinType of {set T}].
+*)
 
 Lemma in_set pA x : x \in finset pA = pA x.
 Proof. by rewrite [@finset]unlock unlock [x \in _]ffunE. Qed.
@@ -243,7 +249,7 @@ End BasicSetTheory.
 
 Definition inE := (in_set, inE).
 
-Arguments set0 {T}.
+Arguments set0 {T fT}.
 Hint Resolve in_setT : core.
 
 Notation "[ 'set' : T ]" := (setTfor (Phant T))
@@ -253,7 +259,7 @@ Notation setT := [set: _] (only parsing).
 
 Section setOpsDefs.
 
-Variable T : finType.
+Context T {fT: finClass T}.
 Implicit Types (a x : T) (A B D : {set T}) (P : {set {set T}}).
 
 Definition set1 a := [set x | x == a].
@@ -286,7 +292,7 @@ Notation "P ::&: D" := (ssetI P D) (at level 48) : set_scope.
 
 Section setOps.
 
-Variable T : finType.
+Context (T: predArgType) {fT: finClass T}.
 Implicit Types (a x : T) (A B C D : {set T}) (pA pB pC : pred T).
 
 Lemma eqEsubset A B : (A == B) = (A \subset B) && (B \subset A).
@@ -368,7 +374,7 @@ Proof. exact: in_set. Qed.
 Lemma set11 x : x \in [set x].
 Proof. by rewrite inE. Qed.
 
-Lemma set1_inj : injective (@set1 T).
+Lemma set1_inj : injective (@set1 T fT).
 Proof. by move=> a b eqsab; apply/set1P; rewrite -eqsab set11. Qed.
 
 Lemma enum_set1 a : enum [set a] = [:: a].
@@ -588,10 +594,10 @@ Proof. by rewrite !inE; apply: negP. Qed.
 Lemma in_setC x A : (x \in ~: A) = (x \notin A).
 Proof. exact: in_set. Qed.
 
-Lemma setCK : involutive (@setC T).
+Lemma setCK : involutive (@setC T fT).
 Proof. by move=> A; apply/setP=> x; rewrite !inE negbK. Qed.
 
-Lemma setC_inj : injective (@setC T).
+Lemma setC_inj : injective (@setC T fT).
 Proof. exact: can_inj setCK. Qed.
 
 Lemma subsets_disjoint A B : (A \subset B) = [disjoint A & ~: B].
@@ -720,7 +726,7 @@ Proof. by rewrite sum1_card cardsE. Qed.
 Lemma sum_nat_dep_const pA n : \sum_(x | pA x) n = #|[set x | pA x]| * n.
 Proof. by rewrite sum_nat_const cardsE. Qed.
 
-Lemma cards0 : #|@set0 T| = 0.
+Lemma cards0 : #|@set0 T fT| = 0.
 Proof. by rewrite cardsE card0. Qed.
 
 Lemma cards_eq0 A : (#|A| == 0) = (A == set0).
@@ -954,26 +960,26 @@ Proof. by rewrite setDE disjoints_subset => /properI/andP[-> /proper_sub]. Qed.
 
 End setOps.
 
-Arguments set1P {T x a}.
-Arguments set1_inj {T} [x1 x2].
-Arguments set2P {T x a b}.
-Arguments setIdP {T x pA pB}.
-Arguments setIP {T x A B}.
-Arguments setU1P {T x a B}.
-Arguments setD1P {T x A b}.
-Arguments setUP {T x A B}.
-Arguments setDP {T A B x}.
-Arguments cards1P {T A}.
-Arguments setCP {T x A}.
-Arguments setIidPl {T A B}.
-Arguments setIidPr {T A B}.
-Arguments setUidPl {T A B}.
-Arguments setUidPr {T A B}.
-Arguments setDidPl {T A B}.
-Arguments subsetIP {T A B C}.
-Arguments subUsetP {T A B C}.
-Arguments subsetDP {T A B C}.
-Arguments subsetD1P {T A B x}.
+Arguments set1P {T fT x a}.
+Arguments set1_inj {T fT} [x1 x2].
+Arguments set2P {T fT x a b}.
+Arguments setIdP {T fT x pA pB}.
+Arguments setIP {T fT x A B}.
+Arguments setU1P {T fT x a B}.
+Arguments setD1P {T fT x A b}.
+Arguments setUP {T fT x A B}.
+Arguments setDP {T fT A B x}.
+Arguments cards1P {T fT A}.
+Arguments setCP {T fT x A}.
+Arguments setIidPl {T fT A B}.
+Arguments setIidPr {T fT A B}.
+Arguments setUidPl {T fT A B}.
+Arguments setUidPr {T fT A B}.
+Arguments setDidPl {T fT A B}.
+Arguments subsetIP {T fT A B C}.
+Arguments subUsetP {T fT A B C}.
+Arguments subsetDP {T fT A B C}.
+Arguments subsetD1P {T fT A B x}.
 Prenex Implicits set1.
 Hint Resolve subsetT_hint : core.
 
@@ -981,25 +987,25 @@ Section setOpsAlgebra.
 
 Import Monoid.
 
-Variable T : finType.
+Context T {fT: finClass T}.
 
-Canonical setI_monoid := Law (@setIA T) (@setTI T) (@setIT T).
+Canonical setI_monoid := Law (@setIA T fT) (@setTI T fT) (@setIT T fT).
 
-Canonical setI_comoid := ComLaw (@setIC T).
-Canonical setI_muloid := MulLaw (@set0I T) (@setI0 T).
+Canonical setI_comoid := ComLaw (@setIC T fT).
+Canonical setI_muloid := MulLaw (@set0I T fT) (@setI0 T fT).
 
-Canonical setU_monoid := Law (@setUA T) (@set0U T) (@setU0 T).
-Canonical setU_comoid := ComLaw (@setUC T).
-Canonical setU_muloid := MulLaw (@setTU T) (@setUT T).
+Canonical setU_monoid := Law (@setUA T fT) (@set0U T fT) (@setU0 T fT).
+Canonical setU_comoid := ComLaw (@setUC T fT).
+Canonical setU_muloid := MulLaw (@setTU T fT) (@setUT T fT).
 
-Canonical setI_addoid := AddLaw (@setUIl T) (@setUIr T).
-Canonical setU_addoid := AddLaw (@setIUl T) (@setIUr T).
+Canonical setI_addoid := AddLaw (@setUIl T fT) (@setUIr T fT).
+Canonical setU_addoid := AddLaw (@setIUl T fT) (@setIUr T fT).
 
 End setOpsAlgebra.
 
 Section CartesianProd.
 
-Variables fT1 fT2 : finType.
+Context fT1 {ffT1: finClass fT1} fT2 {ffT2: finClass fT2}.
 Variables (A1 : {set fT1}) (A2 : {set fT2}).
 
 Definition setX := [set u | u.1 \in A1 & u.2 \in A2].
@@ -1015,19 +1021,19 @@ Proof. by rewrite cardsE cardX. Qed.
 
 End CartesianProd.
 
-Arguments setXP {fT1 fT2 A1 A2 x1 x2}.
+Arguments setXP {fT1 ffT1 fT2 ffT2 A1 A2 x1 x2}.
 
 Local Notation imset_def :=
-  (fun (aT rT : finType) f mD => [set y in @image_mem aT rT f mD]).
+  (fun aT (faT: finClass aT) rT (frT: finClass rT) f mD => [set y in @image_mem aT faT rT f mD]).
 Local Notation imset2_def :=
-  (fun (aT1 aT2 rT : finType) f (D1 : mem_pred aT1) (D2 : _ -> mem_pred aT2) =>
-     [set y in @image_mem _ rT (prod_curry f)
+  (fun aT1 (faT1: finClass aT1) aT2 (faT2: finClass aT2) rT (frT: finClass rT) f (D1 : mem_pred aT1) (D2 : _ -> mem_pred aT2) =>
+     [set y in @image_mem _ _ rT (prod_curry f)
                            (mem [pred u | D1 u.1 & D2 u.1 u.2])]).
 
 Module Type ImsetSig.
-Parameter imset : forall aT rT : finType,
+Parameter imset : forall aT {faT: finClass aT} rT {frT: finClass rT},
  (aT -> rT) -> mem_pred aT -> {set rT}.
-Parameter imset2 : forall aT1 aT2 rT : finType,
+Parameter imset2 : forall aT1 {faT1: finClass aT1} aT2 {faT2: finClass aT2} rT {frT: finClass rT},
  (aT1 -> aT2 -> rT) -> mem_pred aT1 -> (aT1 -> mem_pred aT2) -> {set rT}.
 Axiom imsetE : imset = imset_def.
 Axiom imset2E : imset2 = imset2_def.
@@ -1044,7 +1050,7 @@ Notation imset := Imset.imset.
 Notation imset2 := Imset.imset2.
 Canonical imset_unlock := Unlockable Imset.imsetE.
 Canonical imset2_unlock := Unlockable Imset.imset2E.
-Definition preimset (aT : finType) rT f (R : mem_pred rT) :=
+Definition preimset aT {faT: finClass aT} rT f (R : mem_pred rT) :=
   [set x : aT | in_mem (f x) R].
 
 Notation "f @^-1: A" := (preimset f (mem A)) (at level 24) : set_scope.
@@ -1180,11 +1186,11 @@ Notation "[ 'se' 't' E | x : T , y : U & P ]" :=
 
 Section FunImage.
 
-Variables aT aT2 : finType.
+Context aT {faT: finClass aT} aT2 {faT2: finClass aT2}.
 
 Section ImsetTheory.
 
-Variable rT : finType.
+Context rT {frT: finClass rT}.
 
 Section ImsetProp.
 
@@ -1361,14 +1367,14 @@ Proof. by move=> sAB1 sAB2; rewrite -!imset2_pair imset2S. Qed.
 
 End FunImage.
 
-Arguments imsetP {aT rT f D y}.
-Arguments imset2P {aT aT2 rT f2 D1 D2 y}.
+Arguments imsetP {aT faT rT frT f D y}.
+Arguments imset2P {aT faT aT2 faT2 rT frT f2 D1 D2 y}.
 
 Section BigOps.
 
 Variables (R : Type) (idx : R).
 Variables (op : Monoid.law idx) (aop : Monoid.com_law idx).
-Variables I J : finType.
+Context I {fI: finClass I} J {fJ: finClass J}.
 Implicit Type A B : {set I}.
 Implicit Type h : I -> J.
 Implicit Type P : pred I.
@@ -1413,7 +1419,7 @@ Lemma big_imset h (A : pred I) G :
      {in A &, injective h} ->
   \big[aop/idx]_(j in h @: A) G j = \big[aop/idx]_(i in A) G (h i).
 Proof.
-move=> injh; pose hA := mem (image h A).
+move=> injh; pose hA := !! mem (image h A). (* FIXME !! *)
 have [x0 Ax0 | A0] := pickP A; last first.
   by rewrite !big_pred0 // => x; apply/imsetP=> [[i]]; rewrite unfold_in A0.
 rewrite (eq_bigl hA) => [|j]; last by apply/imsetP/imageP.
@@ -1434,15 +1440,15 @@ Proof. by apply: partition_big => i Ai; apply/imsetP; exists i. Qed.
 
 End BigOps.
 
-Arguments big_setID [R idx aop I A].
-Arguments big_setD1 [R idx aop I] a [A F].
-Arguments big_setU1 [R idx aop I] a [A F].
-Arguments big_imset [R idx aop I J h A].
-Arguments partition_big_imset [R idx aop I J].
+Arguments big_setID [R idx aop I fI A].
+Arguments big_setD1 [R idx aop I fI] a [A F].
+Arguments big_setU1 [R idx aop I fI] a [A F].
+Arguments big_imset [R idx aop I fI J fJ h A].
+Arguments partition_big_imset [R idx aop I fI J fJ].
 
 Section Fun2Set1.
 
-Variables aT1 aT2 rT : finType.
+Context aT1 {faT1: finClass aT1} aT2 {faT2: finClass aT2} rT {frT: finClass rT}.
 Variables (f : aT1 -> aT2 -> rT).
 
 Lemma imset2_set1l x1 (D2 : pred aT2) : f @2: ([set x1], D2) = f x1 @: D2.
@@ -1463,7 +1469,7 @@ End Fun2Set1.
 
 Section CardFunImage.
 
-Variables aT aT2 rT : finType.
+Context aT {faT: finClass aT} aT2 {faT2: finClass aT2} rT {frT: finClass rT}.
 Variables (f : aT -> rT) (g : rT -> aT) (f2 : aT -> aT2 -> rT).
 Variables (D : pred aT) (D2 : pred aT).
 
@@ -1494,27 +1500,27 @@ Proof. by move=> fK gK; apply: can2_in_imset_pre; apply: in1W. Qed.
 
 End CardFunImage.
 
-Arguments imset_injP {aT rT f D}.
+Arguments imset_injP {aT faT rT frT f D}.
 
-Lemma on_card_preimset (aT rT : finType) (f : aT -> rT) (R : pred rT) :
+Lemma on_card_preimset aT {faT: finClass aT} rT {frT: finClass rT} (f : aT -> rT) (R : pred rT) :
   {on R, bijective f} -> #|f @^-1: R| = #|R|.
 Proof.
 case=> g fK gK; rewrite -(can2_in_imset_pre gK) // card_in_imset //.
 exact: can_in_inj gK.
 Qed.
 
-Lemma can_imset_pre (T : finType) f g (A : {set T}) :
+Lemma can_imset_pre T {fT: finClass T} f g (A : {set T}) :
   cancel f g -> f @: A = g @^-1: A :> {set T}.
 Proof.
 move=> fK; apply: can2_imset_pre => // x.
-suffices fx: x \in codom f by rewrite -(f_iinv fx) fK.
+suffices fx: !! x \in codom f by rewrite -(f_iinv fx) fK. (* FIXME !! *)
 exact/(subset_cardP (card_codom (can_inj fK)))/subsetP.
 Qed.
 
-Lemma imset_id (T : finType) (A : {set T}) : [set x | x in A] = A.
-Proof. by apply/setP=> x; rewrite (@can_imset_pre _ _ id) ?inE. Qed.
+Lemma imset_id T {fT: finClass T} (A : {set T}) : [set x | x in A] = A.
+Proof. by apply/setP=> x; rewrite (@can_imset_pre _ _ _ id) ?inE. Qed.
 
-Lemma card_preimset (T : finType) (f : T -> T) (A : {set T}) :
+Lemma card_preimset T {fT: finClass T} (f : T -> T) (A : {set T}) :
   injective f -> #|f @^-1: A| = #|A|.
 Proof.
 move=> injf; apply: on_card_preimset; apply: onW_bij.
@@ -1522,10 +1528,10 @@ have ontof: _ \in codom f by apply/(subset_cardP (card_codom injf))/subsetP.
 by exists (fun x => iinv (ontof x)) => x; rewrite (f_iinv, iinv_f).
 Qed.
 
-Lemma card_powerset (T : finType) (A : {set T}) : #|powerset A| = 2 ^ #|A|.
+Lemma card_powerset T {fT: finClass T} (A : {set T}) : #|powerset A| = 2 ^ #|A|.
 Proof.
 rewrite -card_bool -(card_pffun_on false) -(card_imset _ val_inj).
-apply: eq_card => f; pose sf := false.-support f; pose D := finset sf.
+apply: eq_card => f; pose sf := !! false.-support f; pose D := !! finset sf. (* FIXME !! *) (* FIXME !! *)
 have sDA: (D \subset A) = (sf \subset A) by apply: eq_subset; apply: in_set.
 have eq_sf x : sf x = f x by rewrite /= negb_eqb addbF.
 have valD: val D = f by rewrite /D unlock; apply/ffunP=> x; rewrite ffunE eq_sf.
@@ -1535,7 +1541,7 @@ Qed.
 
 Section FunImageComp.
 
-Variables T T' U : finType.
+Context T {fT: finClass T} T' {fT': finClass T'} U {fU: finClass U}.
 
 Lemma imset_comp (f : T' -> U) (g : T -> T') (H : pred T) :
   (f \o g) @: H = f @: (g @: H).
@@ -1549,58 +1555,58 @@ Qed.
 End FunImageComp.
 
 Notation "\bigcup_ ( i <- r | P ) F" :=
-  (\big[@setU _/set0]_(i <- r | P) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i <- r | P) F%SET) : set_scope.
 Notation "\bigcup_ ( i <- r ) F" :=
-  (\big[@setU _/set0]_(i <- r) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i <- r) F%SET) : set_scope.
 Notation "\bigcup_ ( m <= i < n | P ) F" :=
-  (\big[@setU _/set0]_(m <= i < n | P%B) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(m <= i < n | P%B) F%SET) : set_scope.
 Notation "\bigcup_ ( m <= i < n ) F" :=
-  (\big[@setU _/set0]_(m <= i < n) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(m <= i < n) F%SET) : set_scope.
 Notation "\bigcup_ ( i | P ) F" :=
-  (\big[@setU _/set0]_(i | P%B) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i | P%B) F%SET) : set_scope.
 Notation "\bigcup_ i F" :=
-  (\big[@setU _/set0]_i F%SET) : set_scope.
+  (\big[@setU _ _/set0]_i F%SET) : set_scope.
 Notation "\bigcup_ ( i : t | P ) F" :=
-  (\big[@setU _/set0]_(i : t | P%B) F%SET) (only parsing): set_scope.
+  (\big[@setU _ _/set0]_(i : t | P%B) F%SET) (only parsing): set_scope.
 Notation "\bigcup_ ( i : t ) F" :=
-  (\big[@setU _/set0]_(i : t) F%SET) (only parsing) : set_scope.
+  (\big[@setU _ _/set0]_(i : t) F%SET) (only parsing) : set_scope.
 Notation "\bigcup_ ( i < n | P ) F" :=
-  (\big[@setU _/set0]_(i < n | P%B) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i < n | P%B) F%SET) : set_scope.
 Notation "\bigcup_ ( i < n ) F" :=
-  (\big[@setU _/set0]_ (i < n) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_ (i < n) F%SET) : set_scope.
 Notation "\bigcup_ ( i 'in' A | P ) F" :=
-  (\big[@setU _/set0]_(i in A | P%B) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i in A | P%B) F%SET) : set_scope.
 Notation "\bigcup_ ( i 'in' A ) F" :=
-  (\big[@setU _/set0]_(i in A) F%SET) : set_scope.
+  (\big[@setU _ _/set0]_(i in A) F%SET) : set_scope.
 
 Notation "\bigcap_ ( i <- r | P ) F" :=
-  (\big[@setI _/setT]_(i <- r | P%B) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i <- r | P%B) F%SET) : set_scope.
 Notation "\bigcap_ ( i <- r ) F" :=
-  (\big[@setI _/setT]_(i <- r) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i <- r) F%SET) : set_scope.
 Notation "\bigcap_ ( m <= i < n | P ) F" :=
-  (\big[@setI _/setT]_(m <= i < n | P%B) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(m <= i < n | P%B) F%SET) : set_scope.
 Notation "\bigcap_ ( m <= i < n ) F" :=
-  (\big[@setI _/setT]_(m <= i < n) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(m <= i < n) F%SET) : set_scope.
 Notation "\bigcap_ ( i | P ) F" :=
-  (\big[@setI _/setT]_(i | P%B) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i | P%B) F%SET) : set_scope.
 Notation "\bigcap_ i F" :=
-  (\big[@setI _/setT]_i F%SET) : set_scope.
+  (\big[@setI _ _/setT]_i F%SET) : set_scope.
 Notation "\bigcap_ ( i : t | P ) F" :=
-  (\big[@setI _/setT]_(i : t | P%B) F%SET) (only parsing): set_scope.
+  (\big[@setI _ _/setT]_(i : t | P%B) F%SET) (only parsing): set_scope.
 Notation "\bigcap_ ( i : t ) F" :=
-  (\big[@setI _/setT]_(i : t) F%SET) (only parsing) : set_scope.
+  (\big[@setI _ _/setT]_(i : t) F%SET) (only parsing) : set_scope.
 Notation "\bigcap_ ( i < n | P ) F" :=
-  (\big[@setI _/setT]_(i < n | P%B) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i < n | P%B) F%SET) : set_scope.
 Notation "\bigcap_ ( i < n ) F" :=
-  (\big[@setI _/setT]_(i < n) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i < n) F%SET) : set_scope.
 Notation "\bigcap_ ( i 'in' A | P ) F" :=
-  (\big[@setI _/setT]_(i in A | P%B) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i in A | P%B) F%SET) : set_scope.
 Notation "\bigcap_ ( i 'in' A ) F" :=
-  (\big[@setI _/setT]_(i in A) F%SET) : set_scope.
+  (\big[@setI _ _/setT]_(i in A) F%SET) : set_scope.
 
 Section BigSetOps.
 
-Variables T I : finType.
+Context T {fT: finClass T} I {fI: finClass I}.
 Implicit Types (U : pred T) (P : pred I) (A B : {set I}) (F :  I -> {set T}).
 
 (* It is very hard to use this lemma, because the unification fails to *)
@@ -1647,7 +1653,7 @@ Qed.
 Lemma bigcup_seq r F : \bigcup_(i <- r) F i = \bigcup_(i in r) F i.
 Proof.
 elim: r => [|i r IHr]; first by rewrite big_nil big_pred0.
-rewrite big_cons {}IHr; case r_i: (i \in r).
+rewrite big_cons {}IHr; case r_i: (!! i \in r). (* FIXME !! *)
   rewrite (setUidPr _) ?bigcup_sup //.
   by apply: eq_bigl => j; rewrite !inE; case: eqP => // ->.
 rewrite (bigD1 i (mem_head i r)) /=; congr (_ :|: _).
@@ -1696,18 +1702,18 @@ Proof. by apply: setC_inj; rewrite !setC_bigcap bigcup_seq. Qed.
 
 End BigSetOps.
 
-Arguments bigcup_sup [T I] j [P F].
-Arguments bigcup_max [T I] j [U P F].
-Arguments bigcupP {T I x P F}.
-Arguments bigcupsP {T I U P F}.
-Arguments bigcap_inf [T I] j [P F].
-Arguments bigcap_min [T I] j [U P F].
-Arguments bigcapP {T I x P F}.
-Arguments bigcapsP {T I U P F}.
+Arguments bigcup_sup [T fT I fI] j [P F].
+Arguments bigcup_max [T fT I fI] j [U P F].
+Arguments bigcupP {T fT I fI x P F}.
+Arguments bigcupsP {T fT I fI U P F}.
+Arguments bigcap_inf [T fT I fI] j [P F].
+Arguments bigcap_min [T fT I fI] j [U P F].
+Arguments bigcapP {T fT I fI x P F}.
+Arguments bigcapsP {T fT I fI U P F}.
 
 Section ImsetCurry.
 
-Variables (aT1 aT2 rT : finType) (f : aT1 -> aT2 -> rT).
+Context aT1 {faT1: finClass aT1} aT2 {faT2: finClass aT2} rT {frT: finClass rT} (f : aT1 -> aT2 -> rT).
 
 Section Curry.
 
@@ -1748,7 +1754,7 @@ End ImsetCurry.
 
 Section Partitions.
 
-Variables T I : finType.
+Context T {fT: finClass T} (I: predArgType) {fI: finClass I}.
 Implicit Types (x y z : T) (A B D X : {set T}) (P Q : {set {set T}}).
 Implicit Types (J : pred I) (F : I -> {set T}).
 
@@ -1779,7 +1785,7 @@ Lemma trivIsetP P :
   reflect {in P &, forall A B, A != B -> [disjoint A & B]} (trivIset P).
 Proof.
 have->: P = [set x in enum (mem P)] by apply/setP=> x; rewrite inE mem_enum.
-elim: {P}(enum _) (enum_uniq (mem P)) => [_ | A e IHe] /=.
+elim: {P}(enum _) (!! enum_uniq (mem P)) => [_ | A e IHe] /=. (* FIXME !! *)
   by rewrite /trivIset /cover !big_set0 cards0; left=> A; rewrite inE.
 case/andP; rewrite set_cons -(in_set (fun B => B \in e)) => PA {IHe}/IHe.
 move: {e}[set x in e] PA => P PA IHP.
@@ -1917,7 +1923,7 @@ Lemma partition_disjoint_bigcup (F : I -> {set T}) E :
   \big[op/idx]_(x in \bigcup_i F i) E x =
     \big[op/idx]_i \big[op/idx]_(x in F i) E x.
 Proof.
-move=> disjF; pose P := [set F i | i in I & F i != set0].
+move=> disjF; pose P := !! [set F i | i in I & F i != set0]. (* FIXME !! *)
 have trivP: trivIset P.
   apply/trivIsetP=> _ _ /imsetP[i _ ->] /imsetP[j _ ->] neqFij.
   by apply: disjF; apply: contraNneq neqFij => ->.
@@ -1983,14 +1989,14 @@ case/and3P=> /eqP <-{D} tiP notP0; apply/setP=> B /=; set D := cover P.
 have defP x: x \in D -> [set y in D | y \in pblock P x] = pblock P x.
   by move=> Dx; apply/setIidPr; rewrite (bigcup_max (pblock P x)) ?pblock_mem.
 apply/imsetP/idP=> [[x Px ->{B}] | PB]; first by rewrite defP ?pblock_mem.
-have /set0Pn[x Bx]: B != set0 := memPn notP0 B PB.
+have /set0Pn[x Bx]: !! B != set0 := memPn notP0 B PB. (* FIXME !! *)
 have Px: x \in cover P by apply/bigcupP; exists B.
 by exists x; rewrite // defP // (def_pblock tiP PB Bx).
 Qed.
 
 Section Preim.
 
-Variables (rT : eqType) (f : T -> rT).
+Context rT {crT: eqClass rT} (f : T -> rT).
 
 Definition preim_partition := equivalence_partition (fun x y => f x == f y).
 
@@ -2012,7 +2018,7 @@ Proof.
 case/and3P=> /eqP <- tiP notP0; apply/and3P; split; first exact/and3P.
   apply/subsetP=> _ /imsetP[x Px ->]; case: pickP => //= y Pxy.
   by apply/bigcupP; exists (pblock P x); rewrite ?pblock_mem //.
-apply/forall_inP=> B PB; have /set0Pn[x Bx]: B != set0 := memPn notP0 B PB.
+apply/forall_inP=> B PB; have /set0Pn[x Bx]: !! B != set0 := memPn notP0 B PB. (* FIXME !! *)
 apply/cards1P; exists (odflt x [pick y in pblock P x]); apply/esym/eqP.
 rewrite eqEsubset sub1set inE -andbA; apply/andP; split.
   by apply/mem_imset/bigcupP; exists B.
@@ -2082,15 +2088,15 @@ End Transversals.
 
 End Partitions.
 
-Arguments trivIsetP {T P}.
-Arguments big_trivIset_cond [T R idx op] P [K E].
-Arguments set_partition_big_cond [T R idx op] P [D K E].
-Arguments big_trivIset [T R idx op] P [E].
-Arguments set_partition_big [T R idx op] P [D E].
+Arguments trivIsetP {T fT P}.
+Arguments big_trivIset_cond [T fT R idx op] P [K E].
+Arguments set_partition_big_cond [T fT R idx op] P [D K E].
+Arguments big_trivIset [T fT R idx op] P [E].
+Arguments set_partition_big [T fT R idx op] P [D E].
 
 Prenex Implicits cover trivIset partition pblock.
 
-Lemma partition_partition (T : finType) (D : {set T}) P Q :
+Lemma partition_partition T {fT: finClass T} (D : {set T}) P Q :
     partition P D -> partition Q P ->
   partition (cover @: Q) D /\ {in Q &, injective cover}.
 Proof.
@@ -2100,7 +2106,7 @@ have sQP E: E \in Q -> {subset E <= P}.
 rewrite /partition cover_imset -(big_trivIset _ tiQ) defP -defG eqxx /= andbC.
 have{notQ0} notQ0: set0 \notin cover @: Q.
   apply: contra notP0 => /imsetP[E Q_E E0].
-  have /set0Pn[/= A E_A] := memPn notQ0 E Q_E.
+  have /set0Pn[/= A E_A] := !! memPn notQ0 E Q_E. (* FIXME !! *)
   congr (_ \in P): (sQP E Q_E A E_A).
   by apply/eqP; rewrite -subset0 E0 (bigcup_max A).
 rewrite notQ0; apply: trivIimset => // E F Q_E Q_F.
@@ -2117,7 +2123,7 @@ Qed.
 
 Section MaxSetMinSet.
 
-Variable T : finType.
+Context T {fT: finClass T}.
 Notation sT := {set T}.
 Implicit Types A B C : sT.
 Implicit Type P : pred sT.
@@ -2145,8 +2151,8 @@ Proof. by case/minsetP=> _; apply. Qed.
 
 Lemma ex_minset P : (exists A, P A) -> {A | minset P A}.
 Proof.
-move=> exP; pose pS n := [pred B | P B & #|B| == n].
-pose p n := ~~ pred0b (pS n); have{exP}: exists n, p n.
+move=> exP; pose pS n := !! [pred B | P B & #|B| == n]. (* FIXME !! *)
+pose p n := !! ~~ pred0b (pS n); have{exP}: exists n, p n. (* FIXME !! *)
   by case: exP => A PA; exists #|A|; apply/existsP; exists A; rewrite /= PA /=.
 case/ex_minnP=> n /pred0P; case: (pickP (pS n)) => // A /andP[PA] /eqP <-{n} _.
 move=> minA; exists A => //; apply/minsetP; split=> // B PB sBA; apply/eqP.
@@ -2206,8 +2212,7 @@ Qed.
 
 End MaxSetMinSet.
 
-Arguments setCK {T}.
-Arguments minsetP {T P A}.
-Arguments maxsetP {T P A}.
+Arguments setCK {T fT}.
+Arguments minsetP {T fT P A}.
+Arguments maxsetP {T fT P A}.
 Prenex Implicits minset maxset.
-

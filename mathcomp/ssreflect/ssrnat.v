@@ -171,8 +171,7 @@ move=> n m; apply: (iffP idP) => [|<-]; last by elim n.
 by elim: n m => [|n IHn] [|m] //= /IHn->.
 Qed.
 
-Canonical nat_eqMixin := EqMixin eqnP.
-Canonical nat_eqType := Eval hnf in EqType nat nat_eqMixin.
+Instance nat_eqClass : eqClass nat := EqClass eqnP.
 
 Arguments eqn !m !n.
 Arguments eqnP {x y}.
@@ -1451,8 +1450,7 @@ move=> p q; apply: (iffP idP) => [|<-]; last by case: p => //; elim.
 by case: q; case: p => //; elim=> [p IHp|p IHp|] [q|q|] //=; case/IHp=> ->.
 Qed.
 
-Canonical bin_nat_eqMixin := EqMixin eq_binP.
-Canonical bin_nat_eqType := Eval hnf in EqType N bin_nat_eqMixin.
+Instance bin_nat_eqClass : eqClass N := EqClass eq_binP.
 
 Arguments N.eqb !n !m.
 
@@ -1541,8 +1539,7 @@ Definition extend_number (nn : number) m := Num (nn * 1000 + bin_of_nat m).
 Coercion extend_number : number >-> Funclass.
 
 Canonical number_subType := [newType for bin_of_number].
-Definition number_eqMixin := Eval hnf in [eqMixin of number by <:].
-Canonical number_eqType := Eval hnf in EqType number number_eqMixin.
+Instance number_eqClass : eqClass number := [eqClass of number by <:].
 
 Notation "[ 'Num' 'of' e ]" := (Num (bin_of_nat e))
   (at level 0, format "[ 'Num'  'of'  e ]") : nat_scope.

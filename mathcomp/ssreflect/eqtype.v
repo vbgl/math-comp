@@ -117,42 +117,34 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* FIXME *)
+(* Enrico's hack for have and pose to trigger TC inference *)
+Notation "!! x" := (ltac:(refine x)) (at level 200) : form_scope.
+
 Module Equality.
 
 Definition axiom T (e : rel T) := forall x y, reflect (x = y) (e x y).
 
-Structure mixin_of T := Mixin {op : rel T; _ : axiom op}.
-Notation class_of := mixin_of (only parsing).
+Class class T := Class { op : rel T; opP : axiom op }.
+Arguments op {T _} : simpl never.
+Hint Mode class ! : typeclass_instances.
 
-Section ClassDef.
-
-Structure type := Pack {sort; _ : class_of sort}.
-Local Coercion sort : type >-> Sortclass.
-Variables (T : Type) (cT : type).
-
-Definition class := let: Pack _ c := cT return class_of cT in c.
-
-Definition clone := fun c & cT -> T & phant_id (@Pack T c) cT => Pack c.
-
-End ClassDef.
+Definition sort T & class T := T.
+Definition class_of T (cT: class T) := cT.
+Arguments class_of _ [cT].
 
 Module Exports.
-Coercion sort : type >-> Sortclass.
-Notation eqType := type.
-Notation EqMixin := Mixin.
-Notation EqType T m := (@Pack T m).
-Notation "[ 'eqMixin' 'of' T ]" := (class _ : mixin_of T)
-  (at level 0, format "[ 'eqMixin'  'of'  T ]") : form_scope.
-Notation "[ 'eqType' 'of' T 'for' C ]" := (@clone T C _ idfun id)
-  (at level 0, format "[ 'eqType'  'of'  T  'for'  C ]") : form_scope.
-Notation "[ 'eqType' 'of' T ]" := (@clone T _ _ id id)
-  (at level 0, format "[ 'eqType'  'of'  T ]") : form_scope.
+Notation eqClass := class.
+Notation EqClass := Class.
+
+Notation "[ 'eqClass' 'of' T ]" := (class_of _ : eqClass T)
+  (at level 0, format "[ 'eqClass'  'of'  T ]") : form_scope.
+Notation eq_op := op.
+
 End Exports.
 
 End Equality.
 Export Equality.Exports.
-
-Definition eq_op T := Equality.op (Equality.class T).
 
 (* eqE is a generic lemma that can be used to fold back recursive comparisons *)
 (* after using partial evaluation to simplify comparisons on concrete         *)
@@ -165,12 +157,12 @@ Definition eq_op T := Equality.op (Equality.class T).
 (* comparison function, and so is incompatible with PcanEqMixin and the like  *)
 (* - this is why the tree_eqMixin for GenTree.tree in library choice is not   *)
 (* declared Canonical.                                                        *)
-Lemma eqE T x : eq_op x = Equality.op (Equality.class T) x.
+Lemma eqE T `(eqClass T) x : eq_op x = Equality.op x.
 Proof. by []. Qed.
 
-Lemma eqP T : Equality.axiom (@eq_op T).
-Proof. by case: T => ? []. Qed.
-Arguments eqP {T x y}.
+Lemma eqP T (cT: eqClass T) : Equality.axiom (@eq_op T _).
+Proof. exact: Equality.opP. Qed.
+Arguments eqP {T cT x y}.
 
 Delimit Scope eq_scope with EQ.
 Open Scope eq_scope.
@@ -188,19 +180,19 @@ Notation "x =P y" := (eqP : reflect (x = y) (x == y))
 Notation "x =P y :> T" := (eqP : reflect (x = y :> T) (x == y :> T))
   (at level 70, y at next level, no associativity) : eq_scope.
 
-Prenex Implicits eq_op eqP.
+Prenex Implicits eqP.
 
-Lemma eq_refl (T : eqType) (x : T) : x == x. Proof. exact/eqP. Qed.
+Lemma eq_refl T {cT: eqClass T} (x : T) : x == x. Proof. exact/eqP. Qed.
 Notation eqxx := eq_refl.
 
-Lemma eq_sym (T : eqType) (x y : T) : (x == y) = (y == x).
+Lemma eq_sym T {cT: eqClass T} (x y : T) : (x == y) = (y == x).
 Proof. exact/eqP/eqP. Qed.
 
 Hint Resolve eq_refl eq_sym : core.
 
 Section Contrapositives.
 
-Variables (T1 T2 : eqType).
+Context T1 {cT1: eqClass T1} T2 {cT2: eqClass T2}.
 Implicit Types (A : pred T1) (b : bool) (x : T1) (z : T2).
 
 Lemma contraTeq b x y : (x != y -> ~~ b) -> b -> x = y.
@@ -253,36 +245,25 @@ Proof. by rewrite eq_sym; apply: ifN. Qed.
 
 End Contrapositives.
 
-Arguments memPn {T1 A x}.
-Arguments memPnC {T1 A x}.
+Arguments memPn {T1 cT1 A x}.
+Arguments memPnC {T1 cT1 A x}.
 
-Theorem eq_irrelevance (T : eqType) x y : forall e1 e2 : x = y :> T, e1 = e2.
+Theorem eq_irrelevance T (cT: eqClass T) x y : forall e1 e2 : x = y :> T, e1 = e2.
 Proof.
-pose proj z e := if x =P z is ReflectT e0 then e0 else e.
+pose proj z e := !! if x =P z is ReflectT e0 then e0 else e.
 suff: injective (proj y) by rewrite /proj => injp e e'; apply: injp; case: eqP.
 pose join (e : x = _) := etrans (esym e).
 apply: can_inj (join x y (proj x (erefl x))) _.
 by case: y /; case: _ / (proj x _).
 Qed.
 
-Corollary eq_axiomK (T : eqType) (x : T) : all_equal_to (erefl x).
+Corollary eq_axiomK T {cT: eqClass T} (x : T) : all_equal_to (erefl x).
 Proof. by move=> eq_x_x; apply: eq_irrelevance. Qed.
-
-(* We use the module system to circumvent a silly limitation that  *)
-(* forbids using the same constant to coerce to different targets. *)
-Module Type EqTypePredSig.
-Parameter sort : eqType -> predArgType.
-End EqTypePredSig.
-Module MakeEqTypePred (eqmod : EqTypePredSig).
-Coercion eqmod.sort : eqType >-> predArgType.
-End MakeEqTypePred.
-Module Export EqTypePred := MakeEqTypePred Equality.
 
 Lemma unit_eqP : Equality.axiom (fun _ _ : unit => true).
 Proof. by do 2!case; left. Qed.
 
-Definition unit_eqMixin := EqMixin unit_eqP.
-Canonical unit_eqType := Eval hnf in EqType unit unit_eqMixin.
+Instance unit_eqClass : eqClass unit := EqClass unit_eqP.
 
 (* Comparison for booleans. *)
 
@@ -292,8 +273,7 @@ Definition eqb b := addb (~~ b).
 Lemma eqbP : Equality.axiom eqb.
 Proof. by do 2!case; constructor. Qed.
 
-Canonical bool_eqMixin := EqMixin eqbP.
-Canonical bool_eqType := Eval hnf in EqType bool bool_eqMixin.
+Instance bool_eqClass : eqClass bool := EqClass eqbP.
 
 Lemma eqbE : eqb = eq_op. Proof. by []. Qed.
 
@@ -328,7 +308,7 @@ Notation xpredD1 := (fun (p : pred _) a1 x => (x != a1) && p x).
 
 Section EqPred.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 
 Definition pred1 (a1 : T) := SimplPred (xpred1 a1).
 Definition pred2 (a1 a2 : T) := SimplPred (xpred2 a1 a2).
@@ -340,7 +320,7 @@ Definition predD1 p (a1 : T) := SimplPred (xpredD1 p a1).
 
 Lemma pred1E : pred1 =2 eq_op. Proof. by move=> x y; apply: eq_sym. Qed.
 
-Variables (T2 : eqType) (x y : T) (z u : T2) (b : bool).
+Context T2 (cT2: eqClass T2) (x y : T) (z u : T2) (b : bool).
 
 Lemma predU1P : reflect (x = y \/ b) ((x == y) || b).
 Proof. by apply: (iffP orP); do [case=> [/eqP|]; [left | right]]. Qed.
@@ -362,10 +342,10 @@ Proof. by case: eqP; [left | right]. Qed.
 
 End EqPred.
 
-Arguments predU1P {T x y b}.
-Arguments pred2P {T T2 x y z u}.
-Arguments predD1P {T x y b}.
-Prenex Implicits pred1 pred2 pred3 pred4 predU1 predC1 predD1.
+Arguments predU1P {T cT x y b}.
+Arguments pred2P {T cT T2 cT2 x y z u}.
+Arguments predD1P {T cT x y b}.
+Prenex Implicits pred1 pred2 pred3 pred4 predU1 predC1 predD1 predU1P.
 
 Notation "[ 'predU1' x & A ]" := (predU1 x [mem A])
   (at level 0, format "[ 'predU1'  x  &  A ]") : fun_scope.
@@ -378,7 +358,7 @@ Section EqFun.
 
 Section Exo.
 
-Variables (aT rT : eqType) (D : pred aT) (f : aT -> rT) (g : rT -> aT).
+Context aT {caT: eqClass aT} rT {crT: eqClass rT} (D : pred aT) (f : aT -> rT) (g : rT -> aT).
 
 Lemma inj_eq : injective f -> forall x y, (f x == f y) = (x == y).
 Proof. by move=> inj_f x y; apply/eqP/eqP=> [|-> //]; apply: inj_f. Qed.
@@ -404,7 +384,7 @@ End Exo.
 
 Section Endo.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 
 Definition frel f := [rel x y : T | f x == y].
 
@@ -421,10 +401,11 @@ Variable aT : Type.
 (* The invariant of an function f wrt a projection k is the pred of points *)
 (* that have the same projection as their image.                           *)
 
-Definition invariant (rT : eqType) f (k : aT -> rT) :=
+Definition invariant rT {crT: eqClass rT} f (k : aT -> rT) :=
   [pred x | k (f x) == k x].
+Arguments invariant [rT crT].
 
-Variables (rT1 rT2 : eqType) (f : aT -> aT) (h : rT1 -> rT2) (k : aT -> rT1).
+Context rT1 (crT1: eqClass rT1) rT2 (crT2: eqClass rT2) (f : aT -> aT) (h : rT1 -> rT2) (k : aT -> rT1).
 
 Lemma invariant_comp : subpred (invariant f k) (invariant f (h \o k)).
 Proof. by move=> x eq_kfx; rewrite /= (eqP eq_kfx). Qed.
@@ -441,7 +422,7 @@ Notation coerced_frel f := (rel_of_simpl_rel (frel f)) (only parsing).
 
 Section FunWith.
 
-Variables (aT : eqType) (rT : Type).
+Context aT {caT : eqClass aT} (rT : Type).
 
 Variant fun_delta : Type := FunDelta of aT & rT.
 
@@ -459,7 +440,7 @@ Notation "x |-> y" := (FunDelta x y)
    format "'[hv' x '/ '  |->  y ']'") : fun_delta_scope.
 
 Delimit Scope fun_delta_scope with FUN_DELTA.
-Arguments app_fdelta {aT rT%type} df%FUN_DELTA f z.
+Arguments app_fdelta {aT caT rT%type} df%FUN_DELTA f z.
 
 Notation "[ 'fun' z : T => F 'with' d1 , .. , dn ]" :=
   (SimplFunDelta (fun z : T =>
@@ -495,11 +476,11 @@ Definition compareb x y : bool := compare_T x y.
 Lemma compareP : Equality.axiom compareb.
 Proof. by move=> x y; apply: sumboolP. Qed.
 
-Definition comparableMixin := EqMixin compareP.
+Definition comparableClass := EqClass compareP.
 
 End ComparableType.
 
-Definition eq_comparable (T : eqType) : comparable T :=
+Definition eq_comparable T (cT: eqClass T) : comparable T :=
   fun x y => decP (x =P y).
 
 Section SubType.
@@ -707,57 +688,51 @@ Definition insigd T (A : mem_pred T) x (Ax : in_mem x A) :=
 
 Section TransferEqType.
 
-Variables (T : Type) (eT : eqType) (f : T -> eT).
+Context (T : Type) eT {ceT: eqClass eT} (f : T -> eT).
 
 Lemma inj_eqAxiom : injective f -> Equality.axiom (fun x y => f x == f y).
 Proof. by move=> f_inj x y; apply: (iffP eqP) => [|-> //]; apply: f_inj. Qed.
 
-Definition InjEqMixin f_inj := EqMixin (inj_eqAxiom f_inj).
+Definition InjEqClass f_inj := EqClass (inj_eqAxiom f_inj).
 
-Definition PcanEqMixin g (fK : pcancel f g) := InjEqMixin (pcan_inj fK).
+Definition PcanEqClass g (fK : pcancel f g) := InjEqClass (pcan_inj fK).
 
-Definition CanEqMixin g (fK : cancel f g) := InjEqMixin (can_inj fK).
+Definition CanEqClass g (fK : cancel f g) := InjEqClass (can_inj fK).
 
 End TransferEqType.
 
 Section SubEqType.
 
-Variables (T : eqType) (P : pred T) (sT : subType P).
+Context T {cT: eqClass T} (P : pred T) (sT : subType P).
 
 Local Notation ev_ax := (fun T v => @Equality.axiom T (fun x y => v x == v y)).
 Lemma val_eqP : ev_ax sT val. Proof. exact: inj_eqAxiom val_inj. Qed.
 
-Definition sub_eqMixin := EqMixin val_eqP.
-Canonical sub_eqType := Eval hnf in EqType sT sub_eqMixin.
-
-Definition SubEqMixin :=
-  (let: SubType _ v _ _ _ as sT' := sT
-     return ev_ax sT' val -> Equality.class_of sT' in
-   fun vP : ev_ax _ v => EqMixin vP
-   ) val_eqP.
+Global Instance sub_eqClass : eqClass sT := EqClass val_eqP.
 
 Lemma val_eqE (u v : sT) : (val u == val v) = (u == v).
 Proof. by []. Qed.
 
 End SubEqType.
 
-Arguments val_eqP {T P sT x y}.
+Arguments val_eqP {T cT P sT x y}.
 
-Notation "[ 'eqMixin' 'of' T 'by' <: ]" := (SubEqMixin _ : Equality.class_of T)
-  (at level 0, format "[ 'eqMixin'  'of'  T  'by'  <: ]") : form_scope.
+(* Arguments SubEqClass [T cT P] sT. *)
+
+Notation "[ 'eqClass' 'of' T 'by' <: ]" := (sub_eqClass _ : eqClass T)
+  (at level 0, format "[ 'eqClass'  'of'  T  'by'  <: ]") : form_scope.
 
 Section SigEqType.
 
-Variables (T : eqType) (P : pred T).
+Context T (cT: eqClass T) (P : pred T).
 
-Definition sig_eqMixin := Eval hnf in [eqMixin of {x | P x} by <:].
-Canonical sig_eqType := Eval hnf in EqType {x | P x} sig_eqMixin.
+Global Instance sig_eqClass : eqClass { x | P x } := [eqClass of { x | P x } by <:].
 
 End SigEqType.
 
 Section ProdEqType.
 
-Variable T1 T2 : eqType.
+Context T1 (cT1: eqClass T1) T2 (cT2: eqClass T2).
 
 Definition pair_eq : rel (T1 * T2) := fun u v => (u.1 == v.1) && (u.2 == v.2).
 
@@ -767,8 +742,7 @@ move=> [x1 x2] [y1 y2] /=; apply: (iffP andP) => [[]|[<- <-]] //=.
 by do 2!move/eqP->.
 Qed.
 
-Canonical prod_eqMixin := EqMixin pair_eqP.
-Canonical prod_eqType := Eval hnf in EqType (T1 * T2) prod_eqMixin.
+Global Instance prod_eqClass : eqClass (T1 * T2) := EqClass pair_eqP.
 
 Lemma pair_eqE : pair_eq = eq_op :> rel _. Proof. by []. Qed.
 
@@ -784,8 +758,8 @@ Proof. by case/andP. Qed.
 
 End ProdEqType.
 
-Arguments pair_eq {T1 T2} u v /.
-Arguments pair_eqP {T1 T2}.
+Arguments pair_eq {T1 cT1 T2 cT2} u v /.
+Arguments pair_eqP {T1 cT1 T2 cT2}.
 
 Definition predX T1 T2 (p1 : pred T1) (p2 : pred T2) :=
   [pred z | p1 z.1 & p2 z.2].
@@ -795,7 +769,7 @@ Notation "[ 'predX' A1 & A2 ]" := (predX [mem A1] [mem A2])
 
 Section OptionEqType.
 
-Variable T : eqType.
+Context T (cT: eqClass T).
 
 Definition opt_eq (u v : option T) : bool :=
   oapp (fun x => oapp (eq_op x) false v) (~~ v) u.
@@ -805,16 +779,15 @@ Proof.
 case=> [x|] [y|] /=; by [constructor | apply: (iffP eqP) => [|[]] ->].
 Qed.
 
-Canonical option_eqMixin := EqMixin opt_eqP.
-Canonical option_eqType := Eval hnf in EqType (option T) option_eqMixin.
+Global Instance option_eqClass : eqClass (option T) := EqClass opt_eqP.
 
 End OptionEqType.
 
-Arguments opt_eq {T} !u !v.
+Arguments opt_eq {T cT} !u !v.
 
 Section TaggedAs.
 
-Variables (I : eqType) (T_ : I -> Type).
+Context I {cI: eqClass I} (T_ : I -> Type).
 Implicit Types u v : {i : I & T_ i}.
 
 Definition tagged_as u v :=
@@ -831,7 +804,8 @@ End TaggedAs.
 
 Section TagEqType.
 
-Variables (I : eqType) (T_ : I -> eqType).
+Context I {cI: eqClass I} (T_ : I -> Type).
+Context {eqClassT_ : forall (i : I), eqClass (T_ i)}.
 Implicit Types u v : {i : I & T_ i}.
 
 Definition tag_eq u v := (tag u == tag v) && (tagged u == tagged_as u v).
@@ -839,29 +813,28 @@ Definition tag_eq u v := (tag u == tag v) && (tagged u == tagged_as u v).
 Lemma tag_eqP : Equality.axiom tag_eq.
 Proof.
 rewrite /tag_eq => [] [i x] [j] /=.
-case: eqP => [<-|Hij] y; last by right; case.
+case: (@eqP I) => [<-|Hij] y; last by right; case.
 by apply: (iffP eqP) => [->|<-]; rewrite tagged_asE.
 Qed.
 
-Canonical tag_eqMixin := EqMixin tag_eqP.
-Canonical tag_eqType := Eval hnf in EqType {i : I & T_ i} tag_eqMixin.
+Global Instance tag_eqClass : eqClass { i: I & T_ i} := EqClass tag_eqP.
 
 Lemma tag_eqE : tag_eq = eq_op. Proof. by []. Qed.
 
 Lemma eq_tag u v : u == v -> tag u = tag v.
 Proof. by move/eqP->. Qed.
 
-Lemma eq_Tagged u x :(u == Tagged _ x) = (tagged u == x).
+Lemma eq_Tagged u x : (u == Tagged _ x) = (tagged u == x).
 Proof. by rewrite -tag_eqE /tag_eq eqxx tagged_asE. Qed.
 
 End TagEqType.
 
-Arguments tag_eq {I T_} !u !v.
-Arguments tag_eqP {I T_ x y}.
+Arguments tag_eq {I cI T_ eqClassT_} !u !v.
+Arguments tag_eqP {I cI T_ eqClassT_ x y}.
 
 Section SumEqType.
 
-Variables T1 T2 : eqType.
+Context T1 (cT1: eqClass T1) T2 (cT2: eqClass T2).
 Implicit Types u v : T1 + T2.
 
 Definition sum_eq u v :=
@@ -873,12 +846,11 @@ Definition sum_eq u v :=
 Lemma sum_eqP : Equality.axiom sum_eq.
 Proof. case=> x [] y /=; by [right | apply: (iffP eqP) => [->|[->]]]. Qed.
 
-Canonical sum_eqMixin := EqMixin sum_eqP.
-Canonical sum_eqType := Eval hnf in EqType (T1 + T2) sum_eqMixin.
+Global Instance sum_eqClass : eqClass (T1 + T2) := EqClass sum_eqP.
 
 Lemma sum_eqE : sum_eq = eq_op. Proof. by []. Qed.
 
 End SumEqType.
 
-Arguments sum_eq {T1 T2} !u !v.
-Arguments sum_eqP {T1 T2 x y}.
+Arguments sum_eq {T1 cT1 T2 cT2} !u !v.
+Arguments sum_eqP {T1 cT1 T2 cT2 x y}.

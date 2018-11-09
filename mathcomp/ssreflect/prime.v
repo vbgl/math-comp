@@ -153,7 +153,7 @@ Definition pi_unwrapped_arg := nat.
 Definition pi_wrapped_arg := wrapped nat.
 Coercion unwrap_pi_arg (wa : pi_wrapped_arg) : pi_unwrapped_arg := unwrap wa.
 Coercion pi_arg_of_nat (n : nat) := Wrap n : pi_wrapped_arg.
-Coercion pi_arg_of_fin_pred T pT (A : @fin_pred_sort T pT) : pi_wrapped_arg :=
+Coercion pi_arg_of_fin_pred T {fT: finClass T} pT (A : @fin_pred_sort T fT pT) : pi_wrapped_arg :=
   Wrap #|A|.
 
 Definition pi_of (n : pi_unwrapped_arg) : nat_pred := [pred p in primes n].
@@ -852,7 +852,7 @@ Proof. by move=> eq_pi n; rewrite 3!inE /= eq_pi. Qed.
 
 Lemma eq_piP m n : \pi(m) =i \pi(n) <-> \pi(m) = \pi(n).
 Proof.
-rewrite /pi_of; have eqs := eq_sorted_irr ltn_trans ltnn.
+rewrite /pi_of; have eqs := !! eq_sorted_irr ltn_trans ltnn. (* FIXME !! *)
 by split=> [|-> //]; move/(eqs _ _ (sorted_primes m) (sorted_primes n)) ->.
 Qed.
 
@@ -919,7 +919,8 @@ Qed.
 Lemma p_part p n : n`_p = p ^ logn p n.
 Proof.
 case (posnP (logn p n)) => [log0 |].
-  by rewrite log0 [n`_p]big1_seq // => q; case/andP; move/eqnP->; rewrite log0.
+(* FIXME : explicit cI *)
+  by rewrite log0 [n`_p](big1_seq (cI := nat_eqClass)) // => q; case/andP; move/eqnP->; rewrite log0.
 rewrite logn_gt0 mem_primes; case/and3P=> _ n_gt0 dv_p_n.
 have le_p_n: p < n.+1 by rewrite ltnS dvdn_leq.
 by rewrite [n`_p]big_mkord (big_pred1 (Ordinal le_p_n)).
@@ -1007,21 +1008,21 @@ rewrite -{3}(partnC pi m_gt0) andbC -{3}(partnC pi n_gt0).
 by rewrite !dvdn_mul ?partn_dvd ?dvdn_gcdl ?dvdn_gcdr.
 Qed.
 
-Lemma partn_biglcm (I : finType) (P : pred I) F pi :
+Lemma partn_biglcm I {fI: finClass I} (P : pred I) F pi :
     (forall i, P i -> F i > 0) ->
   (\big[lcmn/1%N]_(i | P i) F i)`_pi = \big[lcmn/1%N]_(i | P i) (F i)`_pi.
 Proof.
 move=> F_gt0; set m := \big[lcmn/1%N]_(i | P i) F i.
 have m_gt0: 0 < m by elim/big_ind: m => // p q p_gt0; rewrite lcmn_gt0 p_gt0.
 apply/eqP; rewrite eqn_dvd andbC; apply/andP; split.
-  by apply/dvdn_biglcmP=> i Pi; rewrite partn_dvd // (@biglcmn_sup _ i).
+  by apply/dvdn_biglcmP=> i Pi; rewrite partn_dvd // (@biglcmn_sup _ _ i).
 rewrite -(dvdn_pmul2r (part_gt0 pi^' m)) partnC //.
 apply/dvdn_biglcmP=> i Pi; rewrite -(partnC pi (F_gt0 i Pi)) dvdn_mul //.
-  by rewrite (@biglcmn_sup _ i).
-by rewrite partn_dvd // (@biglcmn_sup _ i).
+  by rewrite (@biglcmn_sup _ _ i).
+by rewrite partn_dvd // (@biglcmn_sup _ _ i).
 Qed.
 
-Lemma partn_biggcd (I : finType) (P : pred I) F pi :
+Lemma partn_biggcd I {fI: finClass I} (P : pred I) F pi :
     #|SimplPred P| > 0 -> (forall i, P i -> F i > 0) ->
   (\big[gcdn/0]_(i | P i) F i)`_pi = \big[gcdn/0]_(i | P i) (F i)`_pi.
 Proof.
@@ -1029,13 +1030,13 @@ move=> ntP F_gt0; set d := \big[gcdn/0]_(i | P i) F i.
 have d_gt0: 0 < d.
   case/card_gt0P: ntP => i /= Pi; have:= F_gt0 i Pi.
   rewrite !lt0n -!dvd0n; apply: contra => dv0d.
-  by rewrite (dvdn_trans dv0d) // (@biggcdn_inf _ i).
+  by rewrite (dvdn_trans dv0d) // (@biggcdn_inf _ _ i).
 apply/eqP; rewrite eqn_dvd; apply/andP; split.
-  by apply/dvdn_biggcdP=> i Pi; rewrite partn_dvd ?F_gt0 // (@biggcdn_inf _ i).
+  by apply/dvdn_biggcdP=> i Pi; rewrite partn_dvd ?F_gt0 // (@biggcdn_inf _ _ i).
 rewrite -(dvdn_pmul2r (part_gt0 pi^' d)) partnC //.
 apply/dvdn_biggcdP=> i Pi; rewrite -(partnC pi (F_gt0 i Pi)) dvdn_mul //.
-  by rewrite (@biggcdn_inf _ i).
-by rewrite partn_dvd ?F_gt0 // (@biggcdn_inf _ i).
+  by rewrite (@biggcdn_inf _ _ i).
+by rewrite partn_dvd ?F_gt0 // (@biggcdn_inf _ _ i).
 Qed.
 
 Lemma sub_in_pnat pi rho n :
@@ -1238,7 +1239,7 @@ move=> IHpd /andP[npd_p Upd] /andP[pr_p pr_pd].
 have lt0p: 0 < p by apply: prime_gt0.
 have {IHpd Upd}[Udivs Odivs mem_divs] := IHpd Upd pr_pd.
 have ndivs_p m: p * m \notin divs.
-  suffices: p \notin divs; rewrite !mem_divs.
+  suffices: !! p \notin divs; rewrite !mem_divs. (* FIXME !! *)
     by apply: contra => /dvdnP[n ->]; rewrite mulnCA dvdn_mulr.
   have ndv_p_1: ~~(p %| 1) by rewrite dvdn1 neq_ltn orbC prime_gt1.
   rewrite big_seq; elim/big_ind: _ => [//|u v npu npv|[q f] /= pd_qf].

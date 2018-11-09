@@ -36,7 +36,7 @@ Unset Printing Implicit Defensive.
 
 Section Def.
 
-Variables (aT : finType) (rT : Type).
+Context (aT: predArgType) {faT: finClass aT} (rT : Type).
 
 Inductive finfun_type : predArgType := Finfun of #|aT|.-tuple rT.
 
@@ -50,19 +50,21 @@ Canonical finfun_subType := Eval hnf in [newType for fgraph].
 
 End Def.
 
+Arguments finfun_type aT {faT} rT.
+
 Notation "{ 'ffun' fT }" := (finfun_of (Phant fT))
   (at level 0, format "{ 'ffun'  '[hv' fT ']' }") : type_scope.
-Definition exp_finIndexType n := ordinal_finType n.
+Definition exp_finIndexType n := ordinal_finClass n.
 Notation "T ^ n" := (@finfun_of (exp_finIndexType n) T (Phant _)) : type_scope.
 
 Local Notation fun_of_fin_def :=
-  (fun aT rT f x => tnth (@fgraph aT rT f) (enum_rank x)).
+  (fun aT faT rT f x => tnth (@fgraph aT faT rT f) (enum_rank x)).
 
-Local Notation finfun_def := (fun aT rT f => @Finfun aT rT (codom_tuple f)).
+Local Notation finfun_def := (fun aT faT rT f => @Finfun aT faT rT (codom_tuple f)).
 
 Module Type FunFinfunSig.
-Parameter fun_of_fin : forall aT rT, finfun_type aT rT -> aT -> rT.
-Parameter finfun : forall (aT : finType) rT, (aT -> rT) -> {ffun aT -> rT}.
+Parameter fun_of_fin : forall aT faT rT, @finfun_type aT faT rT -> aT -> rT.
+Parameter finfun : forall aT {faT: finClass aT} rT, (aT -> rT) -> {ffun aT -> rT}.
 Axiom fun_of_finE : fun_of_fin = fun_of_fin_def.
 Axiom finfunE : finfun = finfun_def.
 End FunFinfunSig.
@@ -98,7 +100,7 @@ Definition fmem aT rT (pT : predType rT) (f : aT -> pT) := [fun x => mem (f x)].
 (* Lemmas on the correspondance between finfun_type and CiC functions. *)
 Section PlainTheory.
 
-Variables (aT : finType) (rT : Type).
+Context aT {faT: finClass aT} (rT : Type).
 Notation fT := {ffun aT -> rT}.
 Implicit Types (f : fT) (R : pred rT).
 
@@ -128,7 +130,7 @@ split=> [eq_f12 | -> //]; do 2!apply: val_inj => /=.
 by rewrite !fgraph_codom /= (eq_codom eq_f12).
 Qed.
 
-Lemma ffunK : cancel (@fun_of_fin aT rT) (@finfun aT rT).
+Lemma ffunK : cancel (@fun_of_fin aT faT rT) (@finfun aT faT rT).
 Proof. by move=> f; apply/ffunP/ffunE. Qed.
 
 Definition family_mem mF := [pred f : fT | [forall x, in_mem (f x) (mF x)]].
@@ -145,11 +147,11 @@ Proof. exact: forallP. Qed.
 End PlainTheory.
 
 Notation family F := (family_mem (fun_of_simpl (fmem F))).
-Notation ffun_on R := (ffun_on_mem _ (mem R)).
+Notation ffun_on R := (ffun_on_mem (mem R)).
 
-Arguments ffunK {aT rT}.
-Arguments familyP {aT rT pT F f}.
-Arguments ffun_onP {aT rT R f}.
+Arguments ffunK {aT faT rT}.
+Arguments familyP {aT faT rT pT F f}.
+Arguments ffun_onP {aT faT rT R f}.
 
 (*****************************************************************************)
 
@@ -160,7 +162,7 @@ Qed.
 
 Section Support.
 
-Variables (aT : Type) (rT : eqType).
+Context (aT : Type) rT {crT: eqClass rT}.
 
 Definition support_for y (f : aT -> rT) := [pred x | f x != y].
 
@@ -173,7 +175,7 @@ Notation "y .-support" := (support_for y)
 
 Section EqTheory.
 
-Variables (aT : finType) (rT : eqType).
+Context aT {faT: finClass aT} rT {crT: eqClass rT}.
 Notation fT := {ffun aT -> rT}.
 Implicit Types (y : rT) (D : pred aT) (R : pred rT) (f : fT).
 
@@ -183,10 +185,7 @@ Proof.
 by apply: (iffP subsetP) => Dg x; [apply: contraNeq | apply: contraR] => /Dg->.
 Qed.
 
-Definition finfun_eqMixin :=
-  Eval hnf in [eqMixin of finfun_type aT rT by <:].
-Canonical finfun_eqType := Eval hnf in EqType _ finfun_eqMixin.
-Canonical finfun_of_eqType := Eval hnf in [eqType of fT].
+Global Instance finfun_eqClass : eqClass fT := _.
 
 Definition pfamily_mem y mD (mF : aT -> mem_pred rT) :=
   family (fun i : aT => if in_mem i mD then pred_of_simpl (mF i) else pred1 y).
@@ -214,53 +213,57 @@ Qed.
 
 End EqTheory.
 
-Arguments supportP {aT rT y D g}.
+Arguments supportP {aT faT rT crT y D g}.
 Notation pfamily y D F := (pfamily_mem y (mem D) (fun_of_simpl (fmem F))).
 Notation pffun_on y D R := (pffun_on_mem y (mem D) (mem R)).
 
-Definition finfun_choiceMixin aT (rT : choiceType) :=
+Definition finfun_choiceMixin aT {faT: finClass aT} rT {crT: choiceClass rT} :=
   [choiceMixin of finfun_type aT rT by <:].
-Canonical finfun_choiceType aT rT :=
-  Eval hnf in ChoiceType _ (finfun_choiceMixin aT rT).
-Canonical finfun_of_choiceType (aT : finType) (rT : choiceType) :=
-  Eval hnf in [choiceType of {ffun aT -> rT}].
+Global Instance finfun_choiceClass aT (faT: finClass aT) rT (crT: choiceClass rT) : choiceClass {ffun aT -> rT} :=
+  Choice.Class finfun_choiceMixin.
 
-Definition finfun_countMixin aT (rT : countType) :=
+Definition finfun_countMixin aT {faT: finClass aT} rT {crT: countClass rT} :=
   [countMixin of finfun_type aT rT by <:].
-Canonical finfun_countType aT (rT : countType) :=
-  Eval hnf in CountType _ (finfun_countMixin aT rT).
-Canonical finfun_of_countType (aT : finType) (rT : countType) :=
-  Eval hnf in [countType of {ffun aT -> rT}].
-Canonical finfun_subCountType aT (rT : countType) :=
-  Eval hnf in [subCountType of finfun_type aT rT].
-Canonical finfun_of_subCountType (aT : finType) (rT : countType) :=
-  Eval hnf in [subCountType of {ffun aT -> rT}].
+Arguments finfun_countMixin aT {faT} rT {crT}.
+Global Instance finfun_countClass aT (faT: finClass aT) rT (crT: countClass rT) : countClass {ffun aT -> rT} :=
+  Countable.Class (finfun_countMixin aT rT).
+
+Canonical finfun_subCountClass aT {faT: finClass aT} rT {crT: countClass rT} :=
+  Eval hnf in SubCountType (finfun_countMixin aT rT).
 
 (*****************************************************************************)
 
 Section FinTheory.
 
-Variables aT rT : finType.
+Context (aT: predArgType) {faT: finClass aT} (rT: predArgType) {frT: finClass rT}.
 Notation fT := {ffun aT -> rT}.
 Notation ffT := (finfun_type aT rT).
 Implicit Types (D : pred aT) (R : pred rT) (F : aT -> pred rT).
 
-Definition finfun_finMixin := [finMixin of ffT by <:].
+Definition finfun_finMixin : Finite.mixin_of ffT :=
+  SubFinMixin (@finfun_subCountClass aT _ rT _).
+Global Instance finfun_finClass : finClass ffT := Finite.Class _.
+  exact: finfun_finMixin.
+Defined.
+(*
+Definition finfun_finMixin : Finite.mixin_of ffT := Finite.Mixin _. := [finMixin of ffT by <:].
 Canonical finfun_finType := Eval hnf in FinType ffT finfun_finMixin.
 Canonical finfun_subFinType := Eval hnf in [subFinType of ffT].
 Canonical finfun_of_finType := Eval hnf in [finType of fT for finfun_finType].
 Canonical finfun_of_subFinType := Eval hnf in [subFinType of fT].
+*)
+Global Instance finfun_of_finClass : finClass fT := _.
 
 Lemma card_pfamily y0 D F :
   #|pfamily y0 D F| = foldr muln 1 [seq #|F x| | x in D].
 Proof.
 rewrite /image_mem; transitivity #|pfamily y0 (enum D) F|.
   by apply/eq_card=> f; apply/eq_forallb=> x /=; rewrite mem_enum.
-elim: {D}(enum D) (enum_uniq D) => /= [_|x0 s IHs /andP[s'x0 /IHs<-{IHs}]].
+elim: {D}(enum D) (!! enum_uniq D) => /= [_|x0 s IHs /andP[s'x0 /IHs<-{IHs}]]. (* FIXME !! *)
   apply: eq_card1 [ffun=> y0] _ _ => f.
   apply/familyP/eqP=> [y0_f|-> x]; last by rewrite ffunE inE.
   by apply/ffunP=> x; rewrite ffunE (eqP (y0_f x)).
-pose g (xf : rT * fT) := finfun [eta xf.2 with x0 |-> xf.1].
+pose g := !! fun (xf : rT * fT) => finfun [eta xf.2 with x0 |-> xf.1]. (* FIXME !! *)
 have gK: cancel (fun f : fT => (f x0, g (y0, f))) g.
   by move=> f; apply/ffunP=> x; do !rewrite ffunE /=; case: eqP => // ->.
 rewrite -cardX -(card_image (can_inj gK)); apply: eq_card => [] [y f] /=.
@@ -279,7 +282,7 @@ Proof.
 have [y0 _ | rT0] := pickP rT; first exact: (card_pfamily y0 aT).
 rewrite /image_mem; case DaT: (enum aT) => [{rT0}|x0 e] /=; last first.
   by rewrite !eq_card0 // => [f | y]; [have:= rT0 (f x0) | have:= rT0 y].
-have{DaT} no_aT P (x : aT) : P by have:= mem_enum aT x; rewrite DaT.
+have{DaT} no_aT P (x : aT) : P by have:= !! mem_enum aT x; rewrite DaT. (* FIXME !! *)
 apply: eq_card1 [ffun x => no_aT rT x] _ _ => f.
 by apply/familyP/eqP=> _; [apply/ffunP | ] => x; apply: no_aT.
 Qed.

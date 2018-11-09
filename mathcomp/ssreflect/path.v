@@ -163,7 +163,7 @@ Arguments pathP {T e x p}.
 
 Section EqPath.
 
-Variables (n0 : nat) (T : eqType) (x0_cycle : T) (e : rel T).
+Context (n0 : nat) T {cT: eqClass T} (x0_cycle : T) (e : rel T).
 Implicit Type p : seq T.
 
 Variant split x : seq T -> seq T -> seq T -> Type :=
@@ -377,12 +377,14 @@ Qed.
 
 End EqPath.
 
+Prenex Implicits splitPl splitPr shortenP.
+
 
 (* Ordered paths and sorting. *)
 
 Section SortSeq.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Variable leT : rel T.
 
 Definition sorted s := if s is x :: s' then path leT x s' else true.
@@ -542,7 +544,7 @@ have: perm_eq (catss ss ++ s) (merge_sort_pop s ss).
 case: s => // x1 [//|x2 s _]; move/ltnW; move/IHn=> {n IHn}IHs.
 rewrite -{IHs}(perm_eqrP (IHs _)) ifE; set s1 := if_expr _ _ _.
 rewrite (catA _ [:: _; _] s) {s}perm_cat2r.
-apply: (@perm_eq_trans _ (catss ss ++ s1)).
+apply: (@perm_eq_trans _ _ (catss ss ++ s1)).
   by rewrite perm_cat2l /s1 -ifE; case: ifP; rewrite // (perm_catC [:: _]).
 elim: ss {x1 x2}s1 => /= [|s2 ss IHss] s1; first by rewrite cats0.
 rewrite perm_catC; case def_s2: {2}s2=> /= [|y s2']; first by rewrite def_s2.
@@ -569,7 +571,7 @@ Qed.
 
 End SortSeq.
 
-Lemma rev_sorted (T : eqType) (leT : rel T) s :
+Lemma rev_sorted T {cT: eqClass T} (leT : rel T) s :
   sorted leT (rev s) = sorted (fun y x => leT x y) s.
 Proof. by case: s => //= x p; rewrite -rev_path lastI rev_rcons. Qed.
 
@@ -629,7 +631,7 @@ End Trajectory.
 
 Section EqTrajectory.
 
-Variables (T : eqType) (f : T -> T).
+Context T {cT: eqClass T} (f : T -> T).
 
 Lemma eq_fpath f' : f =1 f' -> fpath f =2 fpath f'.
 Proof. by move/eq_frel/eq_path. Qed.
@@ -686,14 +688,14 @@ Qed.
 
 End EqTrajectory.
 
-Arguments fpathP {T f x p}.
-Arguments loopingP {T f x n}.
-Arguments trajectP {T f x n y}.
+Arguments fpathP {T cT f x p}.
+Arguments loopingP {T cT f x n}.
+Arguments trajectP {T cT f x n y}.
 Prenex Implicits traject.
 
 Section UniqCycle.
 
-Variables (n0 : nat) (T : eqType) (e : rel T) (p : seq T).
+Context (n0 : nat) T {cT: eqClass T} (e : rel T) (p : seq T).
 
 Hypothesis Up : uniq p.
 
@@ -712,7 +714,7 @@ Proof.
 move=> x; rewrite next_nth mem_prev prev_nth; case p_x: (x \in p) => //.
 case def_p: p p_x => // [y q]; rewrite -def_p => p_x.
 rewrite index_uniq //; last by rewrite def_p ltnS index_size.
-case q_x: (x \in q); first exact: nth_index.
+case q_x: (!! (x \in q)); first exact: nth_index. (* FIXME !! *)
 rewrite nth_default; last by rewrite leqNgt index_mem q_x.
 by apply/eqP; rewrite def_p inE q_x orbF eq_sym in p_x.
 Qed.
@@ -748,14 +750,14 @@ Qed.
 Lemma next_rot : next (rot n0 p) =1 next p.
 Proof.
 move=> x; have n_p := cycle_next; rewrite -(rot_cycle n0) in n_p.
-case p_x: (x \in p); last by rewrite !next_nth mem_rot p_x.
+case p_x: (!! (x \in p)); last by rewrite !next_nth mem_rot p_x. (* FIXME *)
 by rewrite (eqP (next_cycle n_p _)) ?mem_rot.
 Qed.
 
 Lemma prev_rot : prev (rot n0 p) =1 prev p.
 Proof.
 move=> x; have p_p := cycle_prev; rewrite -(rot_cycle n0) in p_p.
-case p_x: (x \in p); last by rewrite !prev_nth mem_rot p_x.
+case p_x: (!! (x \in p)); last by rewrite !prev_nth mem_rot p_x. (* FIXME !! *)
 by rewrite (eqP (prev_cycle p_p _)) ?mem_rot.
 Qed.
 
@@ -763,7 +765,7 @@ End UniqCycle.
 
 Section UniqRotrCycle.
 
-Variables (n0 : nat) (T : eqType) (p : seq T).
+Context (n0 : nat) T {cT: eqClass T} (p : seq T).
 
 Hypothesis Up : uniq p.
 
@@ -775,12 +777,12 @@ End UniqRotrCycle.
 
 Section UniqCycleRev.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Implicit Type p : seq T.
 
 Lemma prev_rev p : uniq p -> prev (rev p) =1 next p.
 Proof.
-move=> Up x; case p_x: (x \in p); last first.
+move=> Up x; case p_x: (!! (x \in p)); last first. (* FIXME !! *)
   by rewrite next_nth prev_nth mem_rev p_x.
 case/rot_to: p_x (Up) => [i q def_p] Urp; rewrite -rev_uniq in Urp.
 rewrite -(prev_rotr i Urp); do 2 rewrite -(prev_rotr 1) ?rotr_uniq //.
@@ -809,7 +811,7 @@ End MapPath.
 
 Section MapEqPath.
 
-Variables (T T' : eqType) (h : T' -> T) (e : rel T) (e' : rel T').
+Context T {cT: eqClass T} T' {cT': eqClass T'} (h : T' -> T) (e : rel T) (e' : rel T').
 
 Hypothesis Ih : injective h.
 
@@ -818,7 +820,7 @@ Proof. by rewrite {1}/mem2 (index_map Ih) -map_drop mem_map. Qed.
 
 Lemma next_map p : uniq p -> forall x, next (map h p) (h x) = h (next p x).
 Proof.
-move=> Up x; case p_x: (x \in p); last by rewrite !next_nth (mem_map Ih) p_x.
+move=> Up x; case p_x: (!! (x \in p)); last by rewrite !next_nth (mem_map Ih) p_x. (* FIXME !! *)
 case/rot_to: p_x => i p' def_p.
 rewrite -(next_rot i Up); rewrite -(map_inj_uniq Ih) in Up.
 rewrite -(next_rot i Up) -map_rot {i p Up}def_p /=.
@@ -833,12 +835,12 @@ Qed.
 
 End MapEqPath.
 
-Definition fun_base (T T' : eqType) (h : T' -> T) f f' :=
+Definition fun_base T {cT: eqClass T} T' {cT': eqClass T'} (h : T' -> T) f f' :=
   rel_base h (frel f) (frel f').
 
 Section CycleArc.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Implicit Type p : seq T.
 
 Definition arc p x y := let px := rot (index x p) p in take (index y px) px.
