@@ -887,7 +887,7 @@ Arguments revK {T}.
 
 Section EqSeq.
 
-Variables (n0 : nat) (T : eqType) (x0 : T).
+Context (n0 : nat) T {cT: eqClass T} (x0 : T).
 Local Notation nth := (nth x0).
 Implicit Type s : seq T.
 Implicit Types x y z : T.
@@ -906,8 +906,7 @@ case: (x1 =P x2) => [<-|neqx]; last by right; case.
 by apply: (iffP (IHs s2)) => [<-|[]].
 Qed.
 
-Canonical seq_eqMixin := EqMixin eqseqP.
-Canonical seq_eqType := Eval hnf in EqType (seq T) seq_eqMixin.
+Global Instance seq_eqClass : eqClass (seq T) := EqClass eqseqP.
 
 Lemma eqseqE : eqseq = eq_op. Proof. by []. Qed.
 
@@ -1309,18 +1308,18 @@ Definition inE := (mem_seq1, in_cons, inE).
 
 Prenex Implicits mem_seq1 uniq undup index.
 
-Arguments eqseqP [T x y].
-Arguments hasP [T a s].
-Arguments hasPn [T a s].
-Arguments allP [T a s].
-Arguments allPn [T a s].
-Arguments nseqP [T n x y].
-Arguments count_memPn [T x s].
+Arguments eqseqP [T cT x y].
+Arguments hasP [T cT a s].
+Arguments hasPn [T cT a s].
+Arguments allP [T cT a s].
+Arguments allPn [T cT a s].
+Arguments nseqP [T cT n x y].
+Arguments count_memPn [T cT x s].
 Prenex Implicits eqseqP hasP hasPn allP allPn nseqP count_memPn.
 
 Section NthTheory.
 
-Lemma nthP (T : eqType) (s : seq T) x x0 :
+Lemma nthP T (cT : eqClass T) (s : seq T) x x0 :
   reflect (exists2 i, i < size s & nth x0 s i = x) (x \in s).
 Proof.
 apply: (iffP idP) => [|[n Hn <-]]; last by apply mem_nth.
@@ -1354,14 +1353,13 @@ Proof. by elim: s n => [|y s' IHs] [|n] /=; auto. Qed.
 Lemma headI T s (x : T) : rcons s x = head x s :: behead (rcons s x).
 Proof. by case: s. Qed.
 
-Arguments nthP [T s x].
+Arguments nthP [T cT s x].
 Arguments has_nthP [T a s].
 Arguments all_nthP [T a s].
 Prenex Implicits nthP has_nthP all_nthP.
 
 Definition bitseq := seq bool.
-Canonical bitseq_eqType := Eval hnf in [eqType of bitseq].
-Canonical bitseq_predType := Eval hnf in [predType of bitseq].
+Instance bitseq_eqClass : eqClass bitseq := [eqClass of bitseq].
 
 (* Incrementing the ith nat in a seq nat, padding with 0's if needed. This  *)
 (* allows us to use nat seqs as bags of nats.                               *)
@@ -1400,7 +1398,7 @@ Qed.
 
 Section PermSeq.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Implicit Type s : seq T.
 
 Definition perm_eq s1 s2 :=
@@ -1412,7 +1410,7 @@ apply: (iffP allP) => /= [eq_cnt1 a | eq_cnt x _]; last exact/eqP.
 elim: {a}_.+1 {-2}a (ltnSn (count a (s1 ++ s2))) => // n IHn a le_an.
 have [/eqP|] := posnP (count a (s1 ++ s2)).
   by rewrite count_cat addn_eq0; do 2!case: eqP => // ->.
-rewrite -has_count => /hasP[x s12x a_x]; pose a' := predD1 a x.
+rewrite -has_count => /hasP[x s12x a_x]; pose a' := !! @predD1 _ _ a x. (* FIXME *)
 have cnt_a' s: count a s = count_mem x s + count a' s.
   rewrite -count_predUI -[LHS]addn0 -(count_pred0 s).
   by congr (_ + _); apply: eq_count => y /=; case: eqP => // ->.

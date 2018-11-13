@@ -291,7 +291,7 @@ Notation xpredD1 := (fun (p : pred _) a1 x => (x != a1) && p x).
 
 Section EqPred.
 
-Context T (cT: eqClass T).
+Context T {cT: eqClass T}.
 
 Definition pred1 (a1 : T) := SimplPred (xpred1 a1).
 Definition pred2 (a1 a2 : T) := SimplPred (xpred2 a1 a2).
