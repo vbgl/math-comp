@@ -321,8 +321,7 @@ Lemma predU1r : b -> (x == y) || b.
 Proof. by move->; rewrite orbT. Qed.
 
 Lemma eqVneq : {x = y} + {x != y}.
-(* FIXME *)
-Proof. by case eqP; [left | right]. Qed.
+Proof. by case: eqP; [left | right]. Qed.
 
 End EqPred.
 
