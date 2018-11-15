@@ -686,7 +686,7 @@ Context T (cT: eqClass T) (P : pred T) (sT : subType P).
 Local Notation ev_ax := (fun T v => @Equality.axiom T (fun x y => v x == v y)).
 Lemma val_eqP : ev_ax sT val. Proof. exact: inj_eqAxiom val_inj. Qed.
 
-Instance sub_eqClass : eqClass sT := EqClass val_eqP.
+Global Instance sub_eqClass : eqClass sT := EqClass val_eqP.
 
 Lemma val_eqE (u v : sT) : (val u == val v) = (u == v).
 Proof. by []. Qed.

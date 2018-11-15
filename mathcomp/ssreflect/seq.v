@@ -2226,9 +2226,6 @@ Section EqPmapSub.
 
 Context T {cT: eqClass T} (p : pred T) (sT : subType p).
 
-(* FIXME *)
-Local Existing Instance sub_eqClass.
-
 Let insT : T -> option sT := insub.
 
 Lemma mem_pmap_sub s u : (u \in pmap insT s) = (val u \in s).
