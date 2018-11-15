@@ -106,7 +106,7 @@ Unset Printing Implicit Defensive.
 
 (* FIXME *)
 (* Enrico's hack for have and pose to trigger TC inference *)
-Notation "!! x" := (ltac:(refine x)) (at level 0) : form_scope.
+Notation "!! x" := (ltac:(refine x)) (at level 200) : form_scope.
 
 Module Equality.
 

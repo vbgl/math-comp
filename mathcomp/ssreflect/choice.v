@@ -247,58 +247,37 @@ Record mixin_of T := Mixin {
   _ : forall P Q : pred T, P =1 Q -> find P =1 find Q
 }.
 
-Record class_of T := Class {base : Equality.class_of T; mixin : mixin_of T}.
-Local Coercion base : class_of >->  Equality.class_of.
-
-Structure type := Pack {sort; _ : class_of sort; _ : Type}.
-Local Coercion sort : type >-> Sortclass.
-Variables (T : Type) (cT : type).
-Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
-Definition clone c of phant_id class c := @Pack T c T.
-Let xT := let: Pack T _ _ := cT in T.
-Notation xclass := (class : class_of xT).
-
-Definition pack m :=
-  fun b bT & phant_id (Equality.class bT) b => Pack (@Class T b m) T.
-
-(* Inheritance *)
-Definition eqType := @Equality.Pack cT xclass xT.
+Class class T := Class {base :> eqClass T; mixin :> mixin_of T}.
+Hint Mode class ! : typeclass_instances.
 
 End ClassDef.
 
 Module Import Exports.
-Coercion base : class_of >-> Equality.class_of.
-Coercion sort : type >-> Sortclass.
-Coercion eqType : type >-> Equality.type.
-Canonical eqType.
-Notation choiceType := type.
+
+Arguments Class {T base}.
+Notation choiceClass := class.
 Notation choiceMixin := mixin_of.
-Notation ChoiceType T m := (@pack T m _ _ id).
-Notation "[ 'choiceType' 'of' T 'for' cT ]" :=  (@clone T cT _ idfun)
-  (at level 0, format "[ 'choiceType'  'of'  T  'for'  cT ]") : form_scope.
-Notation "[ 'choiceType' 'of' T ]" := (@clone T _ _ id)
-  (at level 0, format "[ 'choiceType'  'of'  T ]") : form_scope.
 
 End Exports.
 
 Module InternalTheory.
 Section InternalTheory.
 (* Inner choice function. *)
-Definition find T := find (mixin (class T)).
+Definition find {T} `{cT : choiceClass T} := find (@mixin _ cT).
 
-Variable T : choiceType.
+Context {T : Type} {cT : choiceClass T}.
 Implicit Types P Q : pred T.
 
-Lemma correct P n x : find P n = Some x -> P x.
-Proof. by case: T => _ [_ []] //= in P n x *. Qed.
+Lemma correct {P n x} : find P n = Some x -> P x.
+Proof. by case: cT => [_ []] //= in P n x *. Qed.
 
-Lemma complete P : (exists x, P x) -> (exists n, find P n).
-Proof. by case: T => _ [_ []] //= in P *. Qed.
+Lemma complete {P} : (exists x, P x) -> (exists n, find P n).
+Proof. by case: cT => [_ []] //= in P *. Qed.
 
-Lemma extensional P Q : P =1 Q -> find P =1 find Q.
-Proof. by case: T => _ [_ []] //= in P Q *. Qed.
+Lemma extensional {P Q} : P =1 Q -> find P =1 find Q.
+Proof. by case: cT => [_ []] //= in P Q *. Qed.
 
-Fact xchoose_subproof P exP : {x | find P (ex_minn (@complete P exP)) = Some x}.
+Fact xchoose_subproof {P} exP : {x | find P (ex_minn (@complete P exP)) = Some x}.
 Proof.
 by case: (ex_minnP (complete exP)) => n; case: (find P n) => // x; exists x.
 Qed.
@@ -311,27 +290,26 @@ Export Choice.Exports.
 
 Section ChoiceTheory.
 
-Implicit Type T : choiceType.
 Import Choice.InternalTheory CodeSeq.
 Local Notation dc := decode.
 
 Section OneType.
 
-Variable T : choiceType.
+Context {T : Type} {cT : choiceClass T}.
 Implicit Types P Q : pred T.
 
-Definition xchoose P exP := sval (@xchoose_subproof T P exP).
+Definition xchoose {P} exP := sval (@xchoose_subproof T _ P exP).
 
-Lemma xchooseP P exP : P (@xchoose P exP).
+Lemma xchooseP {P} exP : P (@xchoose P exP).
 Proof. by rewrite /xchoose; case: (xchoose_subproof exP) => x /= /correct. Qed.
 
-Lemma eq_xchoose P Q exP exQ : P =1 Q -> @xchoose P exP = @xchoose Q exQ.
+Lemma eq_xchoose {P Q} exP exQ : P =1 Q -> @xchoose P exP = @xchoose Q exQ.
 Proof.
 rewrite /xchoose => eqPQ.
 case: (xchoose_subproof exP) => x; case: (xchoose_subproof exQ) => y /=.
 case: ex_minnP => n; case: ex_minnP => m.
 rewrite -(extensional eqPQ) {1}(extensional eqPQ).
-move=> Qm minPm Pn minQn; suffices /eqP->: m == n by move=> -> [].
+move=> Qm minPm Pn minQn; suffices /eqP->: !! m == n by move=> -> [].
 by rewrite eqn_leq minQn ?minPm.
 Qed.
 
@@ -344,17 +322,17 @@ move=> exPQ; have [|x /andP[]] := @sigW (predI P Q); last by exists x.
 by have [x Px Qx] := exPQ; exists x; apply/andP.
 Qed.
 
-Lemma sig_eqW (vT : eqType) (lhs rhs : T -> vT) :
+Lemma sig_eqW {vT : Type} `{eqClass vT} (lhs rhs : T -> vT) :
   (exists x, lhs x = rhs x) -> {x | lhs x = rhs x}.
 Proof.
-move=> exP; suffices [x /eqP Ex]: {x | lhs x == rhs x} by exists x.
+move=> exP; suffices [x /eqP Ex]: !! {x | lhs x == rhs x} by exists x.
 by apply: sigW; have [x /eqP Ex] := exP; exists x.
 Qed.
 
-Lemma sig2_eqW (vT : eqType) (P : pred T) (lhs rhs : T -> vT) :
+Lemma sig2_eqW {vT : Type} `{eqClass vT} (P : pred T) (lhs rhs : T -> vT) :
   (exists2 x, P x & lhs x = rhs x) -> {x | P x & lhs x = rhs x}.
 Proof.
-move=> exP; suffices [x Px /eqP Ex]: {x | P x & lhs x == rhs x} by exists x.
+move=> exP; suffices [x Px /eqP Ex]: !! {x | P x & lhs x == rhs x} by exists x.
 by apply: sig2W; have [x Px /eqP Ex] := exP; exists x.
 Qed.
 
@@ -363,13 +341,13 @@ Definition choose P x0 :=
     xchoose (ex_intro [eta P] x Px)
   else x0.
 
-Lemma chooseP P x0 : P x0 -> P (choose P x0).
+Lemma chooseP {P x0} : P x0 -> P (choose P x0).
 Proof. by move=> Px0; rewrite /choose insubT xchooseP. Qed.
 
-Lemma choose_id P x0 y0 : P x0 -> P y0 -> choose P x0 = choose P y0.
+Lemma choose_id {P x0 y0} : P x0 -> P y0 -> choose P x0 = choose P y0.
 Proof. by move=> Px0 Py0; rewrite /choose !insubT /=; apply: eq_xchoose. Qed.
 
-Lemma eq_choose P Q : P =1 Q -> choose P =1 choose Q.
+Lemma eq_choose {P Q} : P =1 Q -> choose P =1 choose Q.
 Proof.
 rewrite /choose => eqPQ x0.
 do [case: insubP; rewrite eqPQ] => [[x Px] Qx0 _| ?]; last by rewrite insubN.
@@ -383,10 +361,10 @@ Variables (sT : Type) (f : sT -> T).
 Lemma PcanChoiceMixin f' : pcancel f f' -> choiceMixin sT.
 Proof.
 move=> fK; pose liftP sP := [pred x | oapp sP false (f' x)].
-pose sf sP := [fun n => obind f' (find (liftP sP) n)].
+pose sf sP := !! [fun n => obind f' (find (liftP sP) n)].
 exists sf => [sP n x | sP [y sPy] | sP sQ eqPQ n] /=.
 - by case Df: (find _ n) => //= [?] Dx; have:= correct Df; rewrite /= Dx.
-- have [|n Pn] := @complete T (liftP sP); first by exists (f y); rewrite /= fK.
+- have [|n Pn] := @complete T _ (liftP sP); first by exists (f y); rewrite /= fK.
   exists n; case Df: (find _ n) Pn => //= [x] _.
   by have:= correct Df => /=; case: (f' x).
 by congr (obind _ _); apply: extensional => x /=; case: (f' x) => /=.
@@ -402,15 +380,15 @@ Section SubChoice.
 Variables (P : pred T) (sT : subType P).
 
 Definition sub_choiceMixin := PcanChoiceMixin (@valK T P sT).
-Definition sub_choiceClass := @Choice.Class sT (sub_eqMixin sT) sub_choiceMixin.
-Canonical sub_choiceType := Choice.Pack sub_choiceClass sT.
+Global Instance sub_choiceClass : choiceClass sT :=
+  Choice.Class sub_choiceMixin.
 
 End SubChoice.
 
 Fact seq_choiceMixin : choiceMixin (seq T).
 Proof.
 pose r f := [fun xs => fun x : T => f (x :: xs) : option (seq T)].
-pose fix f sP ns xs {struct ns} :=
+pose fix f sP ns xs {struct ns} := !!
   if ns is n :: ns1 then let fr := r (f sP ns1) xs in obind fr (find fr n)
   else if sP xs then Some xs else None.
 exists (fun sP nn => f sP (dc nn) nil) => [sP n ys | sP [ys] | sP sQ eqPQ n].
@@ -423,22 +401,25 @@ exists (fun sP nn => f sP (dc nn) nil) => [sP n ys | sP [ys] | sP sQ eqPQ n].
   case Df: (find _ n)=> // [x] _; exists (code (n :: dc n1)).
   by rewrite codeK /= Df /= (correct Df).
 elim: {n}(dc n) nil => [|n ns IHs] xs /=; first by rewrite eqPQ.
-rewrite (@extensional _ _ (r (f sQ ns) xs)) => [|x]; last by rewrite IHs.
+rewrite (@extensional _ _ _ (r (f sQ ns) xs)) => [|x]; last by rewrite IHs.
 by case: find => /=.
 Qed.
-Canonical seq_choiceType := Eval hnf in ChoiceType (seq T) seq_choiceMixin.
+
+Global Instance seq_choiceClass : choiceClass (seq T) :=
+  Choice.Class seq_choiceMixin.
 
 End OneType.
 
 Section TagChoice.
 
-Variables (I : choiceType) (T_ : I -> choiceType).
+Context {I : Type} `{choiceClass I}.
+Context {T_ : I -> Type} `{forall i : I, choiceClass (T_ i)}.
 
 Fact tagged_choiceMixin : choiceMixin {i : I & T_ i}.
 Proof.
 pose mkT i (x : T_ i) := Tagged T_ x.
-pose ft tP n i := omap (mkT i) (find (tP \o mkT i) n).
-pose fi tP ni nt := obind (ft tP nt) (find (ft tP nt) ni).
+pose ft tP n i := !! omap (mkT i) (find (tP \o mkT i) n).
+pose fi tP ni nt := !! obind (ft tP nt) (find (ft tP nt) ni).
 pose f tP n := if dc n is [:: ni; nt] then fi tP ni nt else None.
 exists f => [tP n u | tP [[i x] tPxi] | sP sQ eqPQ n].
 - rewrite /f /fi; case: (dc n) => [|ni [|nt []]] //=.
@@ -449,12 +430,12 @@ exists f => [tP n u | tP [[i x] tPxi] | sP sQ eqPQ n].
   case/complete=> ni tPn; exists (code [:: ni; nt]); rewrite /f codeK /fi.
   by case Df: find tPn => //= [j] _; have:= correct Df.
 rewrite /f /fi; case: (dc n) => [|ni [|nt []]] //=.
-rewrite (@extensional _ _ (ft sQ nt)) => [|i].
+rewrite (@extensional _ _ _ (ft sQ nt)) => [|i].
   by case: find => //= i; congr (omap _ _); apply: extensional => x /=.
 by congr (omap _ _); apply: extensional => x /=.
 Qed.
-Canonical tagged_choiceType :=
-  Eval hnf in ChoiceType {i : I & T_ i} tagged_choiceMixin.
+Global Instance tagged_choiceClass : choiceClass {i : I & T_ i} :=
+  Choice.Class tagged_choiceMixin.
 
 End TagChoice.
 
@@ -465,34 +446,35 @@ exists f => [P n m | P [n Pn] | P Q eqPQ n] /=; last by rewrite eqPQ.
   by case: ifP => // Pn [<-].
 by exists n; rewrite Pn.
 Qed.
-Canonical nat_choiceType := Eval hnf in ChoiceType nat nat_choiceMixin.
+Global Instance nat_choiceClass : choiceClass nat :=
+ Choice.Class nat_choiceMixin.
 
 Definition bool_choiceMixin := CanChoiceMixin oddb.
-Canonical bool_choiceType := Eval hnf in ChoiceType bool bool_choiceMixin.
-Canonical bitseq_choiceType := Eval hnf in [choiceType of bitseq].
+Canonical bool_choiceClass := Eval hnf in ChoiceType bool bool_choiceMixin.
+Canonical bitseq_choiceClass := Eval hnf in [choiceClass of bitseq].
 
 Definition unit_choiceMixin := CanChoiceMixin bool_of_unitK.
-Canonical unit_choiceType := Eval hnf in ChoiceType unit unit_choiceMixin.
+Canonical unit_choiceClass := Eval hnf in ChoiceType unit unit_choiceMixin.
 
 Definition option_choiceMixin T := CanChoiceMixin (@seq_of_optK T).
-Canonical option_choiceType T :=
+Canonical option_choiceClass T :=
   Eval hnf in ChoiceType (option T) (option_choiceMixin T).
 
 Definition sig_choiceMixin T (P : pred T) : choiceMixin {x | P x} :=
    sub_choiceMixin _.
-Canonical sig_choiceType T (P : pred T) :=
+Canonical sig_choiceClass T (P : pred T) :=
  Eval hnf in ChoiceType {x | P x} (sig_choiceMixin P).
 
 Definition prod_choiceMixin T1 T2 := CanChoiceMixin (@tag_of_pairK T1 T2).
-Canonical prod_choiceType T1 T2 :=
+Canonical prod_choiceClass T1 T2 :=
   Eval hnf in ChoiceType (T1 * T2) (prod_choiceMixin T1 T2).
 
 Definition sum_choiceMixin T1 T2 := PcanChoiceMixin (@opair_of_sumK T1 T2).
-Canonical sum_choiceType T1 T2 :=
+Canonical sum_choiceClass T1 T2 :=
   Eval hnf in ChoiceType (T1 + T2) (sum_choiceMixin T1 T2).
 
 Definition tree_choiceMixin T := PcanChoiceMixin (GenTree.codeK T).
-Canonical tree_choiceType T := ChoiceType (GenTree.tree T) (tree_choiceMixin T).
+Canonical tree_choiceClass T := ChoiceType (GenTree.tree T) (tree_choiceMixin T).
 
 End ChoiceTheory.
 
@@ -529,7 +511,7 @@ Definition pack m :=
   fun bT b & phant_id (Choice.class bT) b => Pack (@Class T b m) T.
 
 Definition eqType := @Equality.Pack cT xclass xT.
-Definition choiceType := @Choice.Pack cT xclass xT.
+Definition choiceClass := @Choice.Pack cT xclass xT.
 
 End ClassDef.
 
@@ -539,8 +521,8 @@ Coercion mixin : class_of >-> mixin_of.
 Coercion sort : type >-> Sortclass.
 Coercion eqType : type >-> Equality.type.
 Canonical eqType.
-Coercion choiceType : type >-> Choice.type.
-Canonical choiceType.
+Coercion choiceClass : type >-> Choice.type.
+Canonical choiceClass.
 Notation countType := type.
 Notation CountType T m := (@pack T m _ _ id).
 Notation CountMixin := Mixin.
@@ -606,7 +588,7 @@ Notation "[ 'countMixin' 'of' T 'by' <: ]" :=
 
 Section SubCountType.
 
-Variables (T : choiceType) (P : pred T).
+Variables (T : choiceClass) (P : pred T).
 Import Countable.
 
 Structure subCountType : Type :=

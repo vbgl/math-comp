@@ -887,7 +887,7 @@ Arguments revK {T}.
 
 Section EqSeq.
 
-Context (n0 : nat) T {cT: eqClass T} (x0 : T).
+Context (n0 : nat) {T : Type} {cT: eqClass T} (x0 : T).
 Local Notation nth := (nth x0).
 Implicit Type s : seq T.
 Implicit Types x y z : T.
@@ -1295,7 +1295,7 @@ Proof. by apply: inj_eq; apply: rot_inj. Qed.
 
 Variant rot_to_spec s x := RotToSpec i s' of rot i s = x :: s'.
 
-Lemma rot_to s x : x \in s -> rot_to_spec s x.
+Lemma rot_to {s} {x} : x \in s -> rot_to_spec s x.
 Proof.
 move=> s_x; pose i := index x s; exists i (drop i.+1 s ++ take i s).
 rewrite -cat_cons {}/i; congr cat; elim: s s_x => //= y s IHs.
@@ -1304,9 +1304,9 @@ Qed.
 
 End EqSeq.
 
-Prenex Implicits rot_to.
+(* Prenex Implicits rot_to. *)
 
-Definition inE := (mem_seq1, in_cons, inE).
+Definition inE := (@mem_seq1, @in_cons, inE).
 
 Prenex Implicits mem_seq1 uniq undup index.
 
@@ -1521,7 +1521,7 @@ Lemma leq_size_uniq s1 s2 :
   uniq s1 -> {subset s1 <= s2} -> size s2 <= size s1 -> uniq s2.
 Proof.
 elim: s1 s2 => [[] | x s1 IHs s2] // Us1x; have /andP[not_s1x Us1] := Us1x.
-case/allP/andP=> /rot_to[i s3 def_s2] /allP ss12 le_s21.
+case/allP/andP => /rot_to[i s3 def_s2] /allP ss12 le_s21.
 rewrite -(rot_uniq i) -(size_rot i) def_s2 /= in le_s21 *.
 have ss13 y (s1y : y \in s1): y \in s3.
   by have:= ss12 y s1y; rewrite -(mem_rot i) def_s2 inE (negPf (memPn _ y s1y)).
