@@ -155,10 +155,10 @@ Notation "x =P y :> T" := (eqP : reflect (x = y :> T) (x == y :> T))
 
 Prenex Implicits eqP.
 
-Lemma eq_refl T (cT: eqClass T) (x : T) : x == x. Proof. exact/eqP. Qed.
+Lemma eq_refl T {cT: eqClass T} (x : T) : x == x. Proof. exact/eqP. Qed.
 Notation eqxx := eq_refl.
 
-Lemma eq_sym T (cT: eqClass T) (x y : T) : (x == y) = (y == x).
+Lemma eq_sym T {cT: eqClass T} (x y : T) : (x == y) = (y == x).
 Proof. exact/eqP/eqP. Qed.
 
 Hint Resolve eq_refl eq_sym.
@@ -367,7 +367,7 @@ End Exo.
 
 Section Endo.
 
-Context T (cT: eqClass T).
+Context T {cT: eqClass T}.
 
 Definition frel f := [rel x y : T | f x == y].
 
@@ -666,7 +666,7 @@ Definition insigd T (A : mem_pred T) x (Ax : in_mem x A) :=
 
 Section TransferEqType.
 
-Context (T : Type) eT (ceT: eqClass eT) (f : T -> eT).
+Context (T : Type) eT {ceT: eqClass eT} (f : T -> eT).
 
 Lemma inj_eqAxiom : injective f -> Equality.axiom (fun x y => f x == f y).
 Proof. by move=> f_inj x y; apply: (iffP eqP) => [|-> //]; apply: f_inj. Qed.

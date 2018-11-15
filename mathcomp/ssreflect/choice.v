@@ -195,8 +195,7 @@ End Def.
 End GenTree.
 Arguments GenTree.codeK : clear implicits.
 
-Definition tree_eqMixin (T : eqType) := PcanEqMixin (GenTree.codeK T).
-Canonical tree_eqType (T : eqType) := EqType (GenTree.tree T) (tree_eqMixin T).
+Instance tree_eqClass T {cT: eqClass T} : eqClass (GenTree.tree T) := PcanEqClass (GenTree.codeK T).
 
 (* Structures for Types with a choice function, and for Types with countably  *)
 (* many elements. The two concepts are closely linked: we indeed make         *)
