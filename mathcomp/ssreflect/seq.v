@@ -1304,6 +1304,8 @@ Qed.
 
 End EqSeq.
 
+Prenex Implicits rot_to.
+
 Definition inE := (mem_seq1, in_cons, inE).
 
 Prenex Implicits mem_seq1 uniq undup index.
@@ -1540,7 +1542,7 @@ Lemma leq_size_perm s1 s2 :
   s1 =i s2 /\ size s1 = size s2.
 Proof.
 move=> Us1 ss12 le_s21; have Us2: uniq s2 := leq_size_uniq Us1 ss12 le_s21.
-suffices: s1 =i s2 by split; last by apply/eqP; rewrite -uniq_size_uniq.
+suffices: !! (s1 =i s2) by split; last by apply/eqP; rewrite -uniq_size_uniq. (* FIXME !! *)
 move=> x; apply/idP/idP=> [/ss12// | s2x]; apply: contraLR le_s21 => not_s1x.
 rewrite -ltnNge (@uniq_leq_size (x :: s1)) /= ?not_s1x //.
 by apply/allP; rewrite /= s2x; apply/allP.
@@ -1565,8 +1567,8 @@ Qed.
 
 Lemma count_mem_uniq s : (forall x, count_mem x s = (x \in s)) -> uniq s.
 Proof.
-move=> count1_s; have Uus := undup_uniq s.
-suffices: perm_eq s (undup s) by move/perm_eq_uniq->.
+move=> count1_s; have Uus := !! (undup_uniq s). (* FIXME !! *)
+suffices: !! (perm_eq s (undup s)) by move/perm_eq_uniq->. (* FIXME !! *)
 by apply/allP=> x _; apply/eqP; rewrite (count_uniq_mem x Uus) mem_undup.
 Qed.
 
@@ -1596,15 +1598,15 @@ End PermSeq.
 Notation perm_eql s1 s2 := (perm_eq s1 =1 perm_eq s2).
 Notation perm_eqr s1 s2 := (perm_eq^~ s1 =1 perm_eq^~ s2).
 
-Arguments perm_eqP [T s1 s2].
-Arguments perm_eqlP [T s1 s2].
-Arguments perm_eqrP [T s1 s2].
+Arguments perm_eqP [T cT s1 s2].
+Arguments perm_eqlP [T cT s1 s2].
+Arguments perm_eqrP [T cT s1 s2].
 Prenex Implicits perm_eq perm_eqP perm_eqlP perm_eqrP.
 Hint Resolve perm_eq_refl.
 
 Section RotrLemmas.
 
-Variables (n0 : nat) (T : Type) (T' : eqType).
+Variables (n0 : nat) (T T': Type) (cT' : eqClass T').
 Implicit Type s : seq T.
 
 Lemma size_rotr s : size (rotr n0 s) = size s.
@@ -1742,7 +1744,7 @@ End Mask.
 
 Section EqMask.
 
-Variables (n0 : nat) (T : eqType).
+Context (n0 : nat) T (cT: eqClass T).
 Implicit Types (s : seq T) (m : bitseq).
 
 Lemma mem_mask_cons x b m y s :
@@ -1767,7 +1769,7 @@ End EqMask.
 
 Section Subseq.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Implicit Type s : seq T.
 
 Fixpoint subseq s1 s2 :=
@@ -1790,7 +1792,7 @@ apply: {IHs2}(iffP (IHs2 _)) => [] [m sz_m def_s1].
   by exists ((x == y) :: m); rewrite /= ?sz_m // -def_s1; case: eqP => // ->.
 case: eqP => [_ | ne_xy]; last first.
   by case: m def_s1 sz_m => [//|[m []//|m]] -> [<-]; exists m.
-pose i := index true m; have def_m_i: take i m = nseq (size (take i m)) false.
+pose i := !! (index true m); have def_m_i: take i m = nseq (size (take i m)) false. (* FIXME !! *)
   apply/all_pred1P; apply/(all_nthP true) => j.
   rewrite size_take ltnNge geq_min negb_or -ltnNge; case/andP=> lt_j_i _.
   rewrite nth_take //= -negb_add addbF -addbT -negb_eqb.
@@ -1858,7 +1860,7 @@ Proof.
 move=> sub12; split; first exact: size_subseq.
 apply/idP/eqP=> [|-> //]; case/subseqP: sub12 => m sz_m ->{s1}.
 rewrite size_mask -sz_m // -all_count -(eq_all eqb_id).
-by move/(@all_pred1P _ true)->; rewrite sz_m mask_true.
+by move/all_pred1P ->; rewrite sz_m mask_true.
 Qed.
 
 Lemma subseq_cons s x : subseq s (x :: s).
@@ -1873,13 +1875,13 @@ Proof. by case/subseqP=> m _ -> Us2; apply: mask_uniq. Qed.
 End Subseq.
 
 Prenex Implicits subseq.
-Arguments subseqP [T s1 s2].
+Arguments subseqP [T cT s1 s2].
 
 Hint Resolve subseq_refl.
 
 Section Rem.
 
-Variables (T : eqType) (x : T).
+Context T {cT: eqClass T} (x : T).
 
 Fixpoint rem s := if s is y :: t then (if y == x then t else y :: rem t) else s.
 
@@ -1920,6 +1922,8 @@ Lemma mem_rem_uniq s : uniq s -> rem s =i [predD1 s & x].
 Proof. by move/rem_filter=> -> y; rewrite mem_filter. Qed.
 
 End Rem.
+
+Prenex Implicits perm_to_rem.
 
 Section Map.
 
@@ -2015,7 +2019,7 @@ Proof. by elim: s => //= x s <-; case: (a x). Qed.
 
 Section FilterSubseq.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 Implicit Types (s : seq T) (a : pred T).
 
 Lemma filter_subseq a s : subseq (filter a s) s.
@@ -2049,12 +2053,12 @@ Qed.
 
 End FilterSubseq.
 
-Arguments subseq_uniqP [T s1 s2].
+Arguments subseq_uniqP [T cT s1 s2].
 
 Section EqMap.
 
-Variables (n0 : nat) (T1 : eqType) (x1 : T1).
-Variables (T2 : eqType) (x2 : T2) (f : T1 -> T2).
+Context (n0 : nat) T1 {cT1 : eqClass T1} (x1 : T1).
+Context T2 {cT2: eqClass T2} (x2 : T2) (f : T1 -> T2).
 Implicit Type s : seq T1.
 
 Lemma map_f s x : x \in s -> f x \in map f s.
@@ -2117,10 +2121,10 @@ Proof. by apply: map_inj_in_uniq; apply: in2W. Qed.
 
 End EqMap.
 
-Arguments mapP [T1 T2 f s y].
+Arguments mapP [T1 cT1 T2 cT2 f s y].
 Prenex Implicits mapP.
 
-Lemma map_of_seq (T1 : eqType) T2 (s : seq T1) (fs : seq T2) (y0 : T2) :
+Lemma map_of_seq T1 {cT1: eqClass T1} T2 (s : seq T1) (fs : seq T2) (y0 : T2) :
   {f | uniq s -> size fs = size s -> map f s = fs}.
 Proof.
 exists (fun x => nth y0 fs (index x s)) => uAs eq_sz.
@@ -2148,7 +2152,7 @@ Proof. by move=> eq_f12; elim=> //= x s ->; rewrite eq_f12. Qed.
 
 End MapComp.
 
-Lemma eq_in_map (T1 : eqType) T2 (f1 f2 : T1 -> T2) (s : seq T1) :
+Lemma eq_in_map T1 {cT1: eqClass T1} T2 (f1 f2 : T1 -> T2) (s : seq T1) :
   {in s, f1 =1 f2} <-> map f1 s = map f2 s.
 Proof.
 elim: s => //= x s IHs; split=> [eqf12 | [f12x /IHs eqf12]]; last first.
@@ -2157,7 +2161,7 @@ rewrite eqf12 ?mem_head //; congr (_ :: _).
 by apply/IHs=> y s_y; rewrite eqf12 // mem_behead.
 Qed.
 
-Lemma map_id_in (T : eqType) f (s : seq T) : {in s, f =1 id} -> map f s = s.
+Lemma map_id_in T {cT: eqClass T} f (s : seq T) : {in s, f =1 id} -> map f s = s.
 Proof. by move/eq_in_map->; apply: map_id. Qed.
 
 (* Map a partial function *)
@@ -2187,7 +2191,7 @@ End Pmap.
 
 Section EqPmap.
 
-Variables (aT rT : eqType) (f : aT -> option rT) (g : rT -> aT).
+Context aT {caT: eqClass aT} rT {crT: eqClass rT} (f : aT -> option rT) (g : rT -> aT).
 
 Lemma eq_pmap (f1 f2 : aT -> option rT) : f1 =1 f2 -> pmap f1 =1 pmap f2.
 Proof. by move=> Ef; elim=> //= x s ->; rewrite Ef. Qed.
@@ -2220,7 +2224,10 @@ End PmapSub.
 
 Section EqPmapSub.
 
-Variables (T : eqType) (p : pred T) (sT : subType p).
+Context T {cT: eqClass T} (p : pred T) (sT : subType p).
+
+(* FIXME *)
+Local Existing Instance sub_eqClass.
 
 Let insT : T -> option sT := insub.
 
@@ -2288,7 +2295,7 @@ End MakeSeq.
 
 Section MakeEqSeq.
 
-Variable T : eqType.
+Context T {cT: eqClass T}.
 
 Lemma mkseq_uniq (f : nat -> T) n : injective f -> uniq (mkseq f n).
 Proof. by move/map_inj_uniq->; apply: iota_uniq. Qed.
@@ -2309,7 +2316,7 @@ Qed.
 
 End MakeEqSeq.
 
-Arguments perm_eq_iotaP {T s t}.
+Arguments perm_eq_iotaP {T cT s t}.
 
 Section FoldRight.
 
@@ -2674,7 +2681,7 @@ Proof. by elim: sh s => //= sh0 sh IHsh s; rewrite map_take IHsh map_drop. Qed.
 
 Section EqFlatten.
 
-Variables S T : eqType.
+Context S {cS: eqClass S} T {cT: eqClass T}.
 
 Lemma flattenP (A : seq (seq T)) x :
   reflect (exists2 s, s \in A & x \in s) (x \in flatten A).
@@ -2694,13 +2701,13 @@ Qed.
 
 End EqFlatten.
 
-Arguments flattenP [T A x].
-Arguments flatten_mapP [S T A s y].
+Arguments flattenP [T cT A x].
+Arguments flatten_mapP [S cS T cT A s y].
 
-Lemma perm_undup_count (T : eqType) (s : seq T) :
+Lemma perm_undup_count T {cT: eqClass T} (s : seq T) :
   perm_eq (flatten [seq nseq (count_mem x s) x | x <- undup s]) s.
 Proof.
-pose N x r := count_mem x (flatten [seq nseq (count_mem y s) y | y <- r]).
+pose N x r := !! (count_mem x (flatten [seq nseq (count_mem y s) y | y <- r])). (* FIXME !! *)
 apply/allP=> x _; rewrite /= -/(N x _).
 have Nx0 r (r'x : x \notin r): N x r = 0.
   by apply/count_memPn; apply: contra r'x => /flatten_mapP[y r_y /nseqP[->]].
@@ -2739,10 +2746,10 @@ Notation "[ 'seq' E | i : T <- s , j : U <- t ]" :=
 
 Section EqAllPairs.
 
-Variables S T : eqType.
-Implicit Types (R : eqType) (s : seq S) (t : seq T).
+Context S {cS: eqClass S} T {cT: eqClass T}.
+Implicit Types (s : seq S) (t : seq T).
 
-Lemma allpairsP R (f : S -> T -> R) s t z :
+Lemma allpairsP R {cR: eqClass R} (f : S -> T -> R) s t z :
   reflect (exists p, [/\ p.1 \in s, p.2 \in t & z = f p.1 p.2])
           (z \in allpairs f s t).
 Proof.
@@ -2754,14 +2761,14 @@ apply: (iffP IHs) => [] [[x' y] /= [s_x' t_y def_z]]; exists (x', y).
 by have [def_x' | //] := predU1P s_x'; rewrite def_z def_x' map_f in not_fxt_z.
 Qed.
 
-Lemma mem_allpairs R (f : S -> T -> R) s1 t1 s2 t2 :
+Lemma mem_allpairs R {cR: eqClass R} (f : S -> T -> R) s1 t1 s2 t2 :
   s1 =i s2 -> t1 =i t2 -> allpairs f s1 t1 =i allpairs f s2 t2.
 Proof.
 move=> eq_s eq_t z.
 by apply/allpairsP/allpairsP=> [] [p fpz]; exists p; rewrite eq_s eq_t in fpz *.
 Qed.
 
-Lemma allpairs_catr R (f : S -> T -> R) s t1 t2 :
+Lemma allpairs_catr R {cR: eqClass R} (f : S -> T -> R) s t1 t2 :
   allpairs f s (t1 ++ t2) =i allpairs f s t1 ++ allpairs f s t2.
 Proof.
 move=> z; rewrite mem_cat.
@@ -2770,7 +2777,7 @@ apply/allpairsP/orP=> [[p [sP1]]|].
 by case=> /allpairsP[p [sp1 sp2 ->]]; exists p; rewrite mem_cat sp2 ?orbT.
 Qed.
 
-Lemma allpairs_uniq R (f : S -> T -> R) s t :
+Lemma allpairs_uniq R {cR: eqClass R} (f : S -> T -> R) s t :
     uniq s -> uniq t ->
     {in [seq (x, y) | x <- s, y <- t] &, injective (prod_curry f)} ->
   uniq (allpairs f s t).
