@@ -2215,9 +2215,16 @@ End BidirectionalLinearZ.
 
 Section LmodProperties.
 
+Context U {cU: lmodClass R U} V {cV: lmodClass R V}.
+Context (f: @Linear.map R _ _ _ _ _ *:%R (Phant (U -> V))).
+(* FIXME:
 Context U {cU: lmodClass R U} V {cV: lmodClass R V} (f : {linear U -> V}).
+*)
 
-Lemma linearZZ : scalable f. Proof. exact: linearZ_LR. Qed.
+(* FIXME: *)
+(* Lemma linearZZ : scalable f. Proof. exact: linearZ_LR. Qed. *)
+Lemma linearZZ : @Linear.mixin_of R _ _ _ _ *:%R f.
+  Proof. exact: linearZ_LR. Qed.
 Lemma linearPZ : linear f. Proof. exact: linearP. Qed.
 
 Lemma can2_linear f' : cancel f f' -> cancel f' f -> linear f'.
