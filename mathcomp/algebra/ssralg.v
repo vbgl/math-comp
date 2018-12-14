@@ -895,6 +895,7 @@ Global Existing Instances base eqClass choiceClass zmodClass.
 Notation ringClass := class.
 Notation RingClass T m := (@Class T _ m).
 Notation RingMixin := Mixin.
+Hint Mode class ! : typeclass_instances.
 End Exports.
 
 End Ring.
@@ -1456,6 +1457,7 @@ Structure mixin_of R {cR: ringClass R} V {cV: zmodClass V} : Type := Mixin {
   _ : right_distributive scale +%R;
   _ : forall v, {morph scale^~ v: a b / a + b}
 }.
+Arguments mixin_of R [cR] V [cV].
 
 Section ClassDef.
 
@@ -1463,9 +1465,8 @@ Context R {cR: ringClass R}.
 
 Class class V := Class {
   base :> Zmodule.class V;
-  mixin : mixin_of
+  mixin : mixin_of R V;
 }.
-
 
 Definition eqClass T {cT: class T} : eqClass T := Zmodule.eqClass.
 Definition choiceClass T {cT: class T} : choiceClass T := Zmodule.choiceClass.
@@ -1480,6 +1481,7 @@ Global Existing Instances base eqClass choiceClass zmodClass.
 Notation lmodClass R := (@class R _).
 Notation LmodClass R T m := (@Class R _ T _ m).
 Notation LmodMixin := Mixin.
+Hint Mode class - - ! : typeclass_instances.
 End Exports.
 
 End Lmodule.
@@ -1510,8 +1512,8 @@ Proof. by case: cV a => ? []. Qed.
 Lemma scalerDl v : {morph *:%R^~ v : a b / a + b}.
 Proof. by case: cV v => ? []. Qed.
 
-Lemma scale0r v : 0 *: v = 0.
-Proof. by apply: (addIr (1 *: v)); rewrite -scalerDl !add0r. Qed.
+Lemma scale0r v : (0 :R) *: v = 0. (* TODO: :R) *)
+Proof. by apply: (addIr ((1:R) *: v)); rewrite -scalerDl !add0r. Qed. (* TODO: :R *)
 
 Lemma scaler0 a : a *: 0 = 0 :> V.
 Proof. by rewrite -{1}(scale0r 0) scalerA mulr0 scale0r. Qed.
@@ -1519,7 +1521,7 @@ Proof. by rewrite -{1}(scale0r 0) scalerA mulr0 scale0r. Qed.
 Lemma scaleNr a v : - a *: v = - (a *: v).
 Proof. by apply: (addIr (a *: v)); rewrite -scalerDl !addNr scale0r. Qed.
 
-Lemma scaleN1r v : (- 1) *: v = - v.
+Lemma scaleN1r v : (- 1 :R) *: v = - v. (* TODO *)
 Proof. by rewrite scaleNr scale1r. Qed.
 
 Lemma scalerN a v : a *: (- v) = - (a *: v).
@@ -1531,13 +1533,13 @@ Proof. by rewrite scalerDl scaleNr. Qed.
 Lemma scalerBr a u v : a *: (u - v) = a *: u - a *: v.
 Proof. by rewrite scalerDr scalerN. Qed.
 
-Lemma scaler_nat n v : n%:R *: v = v *+ n.
+Lemma scaler_nat n v : (n%:R :R) *: v = v *+ n. (* TODO *)
 Proof.
 elim: n => /= [|n ]; first by rewrite scale0r.
 by rewrite !mulrS scalerDl ?scale1r => ->.
 Qed.
 
-Lemma scaler_sign (b : bool) v: (-1) ^+ b *: v = (if b then - v else v).
+Lemma scaler_sign (b : bool) v: (-1 :R) ^+ b *: v = (if b then - v else v). (* FIXME *)
 Proof. by case: b; rewrite ?scaleNr scale1r. Qed.
 
 Lemma signrZK n : @involutive V ( *:%R ((-1) ^+ n)).
@@ -1556,7 +1558,7 @@ by rewrite !mulrSr IHn scalerDr.
 Qed.
 
 Lemma scaler_suml v I r (P : pred I) F :
-  (\sum_(i <- r | P i) F i) *: v = \sum_(i <- r | P i) F i *: v.
+  (\sum_(i <- r | P i) (F i :R)) *: v = \sum_(i <- r | P i) F i *: v. (* FIXME *)
 Proof. exact: (big_morph _ (scalerDl v) (scale0r v)). Qed.
 
 Lemma scaler_sumr a I r (P : pred I) (F : I -> V) :
@@ -1619,6 +1621,7 @@ Bind Scope ring_scope with class.
 Global Existing Instances base base2 eqClass choiceClass zmodClass ringClass lmodClass lmod_ringClass.
 Notation lalgClass R := (@class R _).
 Notation LalgClass R T m a := (@Class R _ T _ m a).
+Hint Mode class - - ! : typeclass_instances.
 End Exports.
 
 End Lalgebra.
@@ -1636,10 +1639,10 @@ Section LalgebraTheory.
 Context R {cR: ringClass R} A {cA: lalgClass R A}.
 Implicit Types x y : A.
 
-Lemma scalerAl k (x y : A) : k *: (x * y) = k *: x * y.
+Lemma scalerAl (k: R) (x y : A) : k *: (x * y) = k *: x * y. (* FIXME : k: R *)
 Proof. by case: cA k x y => ? []. Qed.
 
-Lemma mulr_algl a x : a%:A * x = a *: x.
+Lemma mulr_algl (a: R) x : a%:A * x = a *: x. (* FIXME a:R *)
 Proof. by rewrite -scalerAl mul1r. Qed.
 
 (*
@@ -1660,14 +1663,16 @@ Section ClosedPredicates.
 
 Variable S : predPredType A.
 
-Definition subalg_closed := [/\ 1 \in S, linear_closed S & mulr_2closed S].
+(* FIXME: R A *)
+Definition subalg_closed := [/\ (1 : A) \in S, @linear_closed R _ A _ S & mulr_2closed S].
 
-Lemma subalg_closedZ : subalg_closed -> submod_closed S.
+(* FIXME: R A *)
+Lemma subalg_closedZ : subalg_closed -> @submod_closed R _ A _ S.
 Proof. by case=> S1 Slin _; split; rewrite // -(subrr 1) linear_closedB. Qed.
 
 Lemma subalg_closedBM : subalg_closed -> subring_closed S.
-(* FIXME: get rid of explicit V := A *)
-Proof. by case=> S1 Slin SM; split=> //; apply: (linear_closedB (V := A)). Qed.
+(* FIXME: R A *)
+Proof. by case=> S1 Slin SM; split=> //; apply: (@linear_closedB R _ A). Qed.
 
 End ClosedPredicates.
 
@@ -1727,8 +1732,8 @@ End LiftedRing.
 (* Lifted linear operations. *)
 Section LiftedScale.
 Context R {cR: ringClass R} (U : Type) V {cV: lmodClass R V} A {cA: lalgClass R A}.
-Definition scale_fun_head t a (f : U -> V) x := let: tt := t in a *: f x.
-Definition in_alg_head (phA : phant A) k : A := let: Phant := phA in k%:A.
+Definition scale_fun_head t (a: R) (f : U -> V) x := let: tt := t in a *: f x. (* FIXME : R *)
+Definition in_alg_head (phA : phant A) (k :R) : A := let: Phant := phA in k%:A. (* FIXME *)
 End LiftedScale.
 
 Notation null_fun V := (null_fun_head (Phant V)) (only parsing).
@@ -1798,10 +1803,10 @@ Proof. by rewrite !(mulr_sign, =^~ signr_odd) (fun_if f) raddfN. Qed.
 
 Context U {cU: lmodClass R U} V {cV: lmodClass S V} (h : {additive U -> V}).
 
-Lemma raddfZnat n u : h (n%:R *: u) = n%:R *: h u.
+Lemma raddfZnat n u : h ((n%:R :R) *: u) = (n%:R : S) *: h u. (* FIXME *)
 Proof. by rewrite !scaler_nat raddfMn. Qed.
 
-Lemma raddfZsign n u : h ((-1) ^+ n *: u) = (-1) ^+ n *: h u.
+Lemma raddfZsign n u : h ((-1 : R) ^+ n *: u) = (-1 :S) ^+ n *: h u. (* FIXME *)
 Proof. by rewrite !(scaler_sign, =^~ signr_odd) (fun_if h) raddfN. Qed.
 
 End RingProperties.
@@ -1996,7 +2001,7 @@ Section InAlgebra.
 
 Context R {cR: ringClass R} A {cA: lalgClass R A}.
 
-Fact in_alg_is_rmorphism : rmorphism (in_alg_loc A).
+Fact in_alg_is_rmorphism : rmorphism (@in_alg_head R _ A _ (Phant A)). (* FIXME *)
 Proof.
 split=> [x y|]; first exact: scalerBl.
 by split=> [x y|] /=; rewrite ?scale1r // -scalerAl mul1r scalerA.
@@ -2004,7 +2009,7 @@ Qed.
 Canonical in_alg_additive := Additive in_alg_is_rmorphism.
 Canonical in_alg_rmorphism := RMorphism in_alg_is_rmorphism.
 
-Lemma in_algE a : in_alg_loc A a = a%:A. Proof. by []. Qed.
+Lemma in_algE a : @in_alg_head R _ A _ (Phant A) a = a%:A. Proof. by []. Qed. (* FIXME *)
 
 End InAlgebra.
 
@@ -2202,7 +2207,7 @@ Context U {cU: lmodClass R U} V {cV: zmodClass V} (s : R -> V -> V).
 
 Context S {cS: ringClass S} (h : S -> V -> V) (h_law : Scale.law h).
 
-Lemma linearZ c a (h_c := Scale.op h_law c) (f : Linear.map_for s a h_c) u :
+Lemma linearZ c (a: R) (h_c := Scale.op h_law c) (f : Linear.map_for s a h_c) (u: U) :
   f (a *: u) = h_c (Linear.wrap f u).
 Proof. by rewrite linearZ_LR; case: f => f /= ->. Qed.
 
@@ -2415,6 +2420,7 @@ Global Existing Instances eqClass choiceClass zmodClass ringClass.
 Notation comRingClass := class.
 Notation ComRingClass T m := (@Class T _ m).
 Notation ComRingMixin := RingMixin.
+Hint Mode class - - ! : typeclass_instances.
 End Exports.
 
 End ComRing.
