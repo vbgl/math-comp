@@ -1,3 +1,4 @@
+-arg -noinit
 -I .
 -R . mathcomp
 
