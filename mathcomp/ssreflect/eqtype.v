@@ -275,12 +275,12 @@ Theorem eq_irrelevance (T : eqType) x y : forall e1 e2 : x = y :> T, e1 = e2.
 Proof.
 pose proj z e := if x =P z is ReflectT e0 then e0 else e.
 suff: injective (proj y) by rewrite /proj => injp e e'; apply: injp; case: eqP.
-pose join (e : x = _) := etrans (esym e).
-apply: can_inj (join x y (proj x (erefl x))) _.
+pose join (e : x = _) := eq_trans (equality.eq_sym e).
+apply: can_inj (join x y (proj x (equality.eq_refl x))) _.
 by case: y /; case: _ / (proj x _).
 Qed.
 
-Corollary eq_axiomK (T : eqType) (x : T) : all_equal_to (erefl x).
+Corollary eq_axiomK (T : eqType) (x : T) : all_equal_to (equality.eq_refl x).
 Proof. by move=> eq_x_x; apply: eq_irrelevance. Qed.
 
 (* We use the module system to circumvent a silly limitation that  *)
@@ -372,7 +372,7 @@ Proof. by move->; rewrite eqxx. Qed.
 Lemma predU1r : b -> (x == y) || b.
 Proof. by move->; rewrite orbT. Qed.
 
-Lemma eqVneq : {x = y} + {x != y}.
+Lemma eqVneq : (x = y) + (x != y).
 Proof. by case: eqP; [left | right]. Qed.
 
 End EqPred.
@@ -603,11 +603,11 @@ Proof. by move=> x Px; rewrite /= val_insubd [P x]Px. Qed.
 
 Let insub_eq_aux x isPx : P x = isPx -> option sT :=
   if isPx as b return _ = b -> _ then fun Px => Some (Sub x Px) else fun=> None.
-Definition insub_eq x := insub_eq_aux (erefl (P x)).
+Definition insub_eq x := insub_eq_aux (equality.eq_refl (P x)).
 
 Lemma insub_eqE : insub_eq =1 insub.
 Proof.
-rewrite /insub_eq => x; set b := P x; rewrite [in LHS]/b in (Db := erefl b) *.
+rewrite /insub_eq => x; set b := P x; rewrite [in LHS]/b in (Db := equality.eq_refl b) *.
 by case: b in Db *; [rewrite insubT | rewrite insubF].
 Qed.
 
@@ -665,34 +665,17 @@ Notation "[ 'new' 'Type' 'for' v ]" := (NewType v _ _ vrefl_rect)
 Notation "[ 'newType' 'for' v 'by' rec ]" := (NewType v _ rec vrefl)
  (at level 0, format "[ 'newType'  'for'  v  'by'  rec ]") : form_scope.
 
-Definition innew T nT x := @Sub T predT nT x (erefl true).
+Definition innew T nT x := @Sub T predT nT x (equality.eq_refl true).
 Arguments innew {T nT}.
 
 Lemma innew_val T nT : cancel val (@innew T nT).
 Proof. by move=> u; apply: val_inj; apply: SubK. Qed.
 
-(* Prenex Implicits and renaming. *)
-Notation sval := (@proj1_sig _ _).
-Notation "@ 'sval'" := (@proj1_sig) (at level 10, format "@ 'sval'").
-
-Section SigProj.
-
-Variables (T : Type) (P Q : T -> Prop).
-
-Lemma svalP : forall u : sig P, P (sval u). Proof. by case. Qed.
-
-Definition s2val (u : sig2 P Q) := let: exist2 x _ _ := u in x.
-
-Lemma s2valP u : P (s2val u). Proof. by case: u. Qed.
-
-Lemma s2valP' u : Q (s2val u). Proof. by case: u. Qed.
-
-End SigProj.
-
 Prenex Implicits svalP s2val s2valP s2valP'.
 
 Canonical sig_subType T (P : pred T) : subType [eta P] :=
-  Eval hnf in [subType for @sval T [eta [eta P]]].
+  Eval hnf in (SubType _ (@sval T [eta [eta P]]) (λ x h, exist _ x h) inlined_sub_rect vrefl_rect).
+(* FIXME: “exist” should be inferred *)
 
 (* Shorthand for sigma types over collective predicates. *)
 Notation "{ x 'in' A }" := {x | x \in A}
@@ -778,7 +761,7 @@ Definition pair_eq : rel (T1 * T2) := fun u v => (u.1 == v.1) && (u.2 == v.2).
 
 Lemma pair_eqP : Equality.axiom pair_eq.
 Proof.
-move=> [x1 x2] [y1 y2] /=; apply: (iffP andP) => [[]|[<- <-]] //=.
+move=> [x1 x2] [y1 y2] /=; apply: (iffP andP) => [[]|/pairI[<- <-]] //=.
 by do 2!move/eqP->.
 Qed.
 
@@ -817,7 +800,7 @@ Definition opt_eq (u v : option T) : bool :=
 
 Lemma opt_eqP : Equality.axiom opt_eq.
 Proof.
-case=> [x|] [y|] /=; by [constructor | apply: (iffP eqP) => [|[]] ->].
+case=> [x|] [y|] /=; by [constructor | apply: (iffP eqP) => [|/optionI] ->].
 Qed.
 
 Canonical option_eqMixin := EqMixin opt_eqP.
@@ -830,7 +813,7 @@ Arguments opt_eq {T} !u !v.
 Section TaggedAs.
 
 Variables (I : eqType) (T_ : I -> Type).
-Implicit Types u v : {i : I & T_ i}.
+Implicit Types u v : {i : I | T_ i}.
 
 Definition tagged_as u v :=
   if tag u =P tag v is ReflectT eq_uv then
@@ -847,26 +830,29 @@ End TaggedAs.
 Section TagEqType.
 
 Variables (I : eqType) (T_ : I -> eqType).
-Implicit Types u v : {i : I & T_ i}.
+Implicit Types u v : {i : I | T_ i}.
 
 Definition tag_eq u v := (tag u == tag v) && (tagged u == tagged_as u v).
 
 Lemma tag_eqP : Equality.axiom tag_eq.
 Proof.
 rewrite /tag_eq => [] [i x] [j] /=.
-case: eqP => [<-|Hij] y; last by right; case.
+case: eqP => [<-|Hij] y; last by right; case/sigI.
 by apply: (iffP eqP) => [->|<-]; rewrite tagged_asE.
 Qed.
 
 Canonical tag_eqMixin := EqMixin tag_eqP.
-Canonical tag_eqType := Eval hnf in EqType {i : I & T_ i} tag_eqMixin.
+Canonical tag_eqType := Eval hnf in EqType {i : I | T_ i} tag_eqMixin.
 
-Lemma tag_eqE : tag_eq = eq_op. Proof. by []. Qed.
+(* FIXME: the “tag_eqType” should be inferred *)
+Lemma tag_eqE : tag_eq = @eq_op (tag_eqType). Proof. by []. Qed.
 
-Lemma eq_tag u v : u == v -> tag u = tag v.
+(* FIXME: the “tag_eqType” should be inferred *)
+Lemma eq_tag (u v: tag_eqType) : u == v -> tag u = tag v.
 Proof. by move/eqP->. Qed.
 
-Lemma eq_Tagged u x :(u == Tagged _ x) = (tagged u == x).
+(* FIXME: the “tag_eqType” should be inferred *)
+Lemma eq_Tagged (u: tag_eqType) x : (u == Tagged _ x) = (tagged u == x).
 Proof. by rewrite -tag_eqE /tag_eq eqxx tagged_asE. Qed.
 
 End TagEqType.
@@ -881,12 +867,12 @@ Implicit Types u v : T1 + T2.
 
 Definition sum_eq u v :=
   match u, v with
-  | inl x, inl y | inr x, inr y => x == y
+  | Left x, Left y | Right x, Right y => x == y
   | _, _ => false
   end.
 
 Lemma sum_eqP : Equality.axiom sum_eq.
-Proof. case=> x [] y /=; by [right | apply: (iffP eqP) => [->|[->]]]. Qed.
+Proof. case=> x [] y /=; by [right | apply: (iffP eqP) => [->|/sumI->]]. Qed.
 
 Canonical sum_eqMixin := EqMixin sum_eqP.
 Canonical sum_eqType := Eval hnf in EqType (T1 + T2) sum_eqMixin.
