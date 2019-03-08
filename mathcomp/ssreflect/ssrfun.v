@@ -1,2 +1,2 @@
-From Coq Require Export ssrfun.
+From Stdlib Require Export functions.
 From mathcomp Require Export ssrnotations.

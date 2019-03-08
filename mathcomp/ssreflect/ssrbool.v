@@ -1,1 +1,1 @@
-From Coq Require Export ssrbool.
+From Stdlib Require Export bool.
