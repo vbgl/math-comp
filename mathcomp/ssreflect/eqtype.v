@@ -121,7 +121,7 @@ Module Equality.
 
 Definition axiom T (e : rel T) := forall x y, reflect (x = y) (e x y).
 
-Structure mixin_of T := Mixin {op : rel T; _ : axiom op}.
+Structure mixin_of T := Mixin {op : rel T; eqP : axiom op}.
 Notation class_of := mixin_of (only parsing).
 
 Section ClassDef.
@@ -525,8 +525,8 @@ Structure subType : Type := SubType {
   sub_sort :> Type;
   val : sub_sort -> T;
   Sub : forall x, P x -> sub_sort;
-  _ : forall K (_ : forall x Px, K (@Sub x Px)) u, K u;
-  _ : forall x Px, val (@Sub x Px) = x
+  rec : forall K (_ : forall x Px, K (@Sub x Px)) u, K u;
+  SubK_ : forall x Px, val (@Sub x Px) = x
 }.
 
 (* Generic proof that the second property holds by conversion.                *)
@@ -615,7 +615,7 @@ End Theory.
 
 End SubType.
 
-Arguments SubType {T P} sub_sort val Sub rec SubK.
+Arguments SubType {T P} sub_sort val Sub rec SubK : rename.
 Arguments val {T P sT} u : rename.
 Arguments Sub {T P sT} x Px : rename.
 Arguments vrefl {T P} x Px.
@@ -674,7 +674,8 @@ Proof. by move=> u; apply: val_inj; apply: SubK. Qed.
 Prenex Implicits svalP s2val s2valP s2valP'.
 
 Canonical sig_subType T (P : pred T) : subType [eta P] :=
-  Eval hnf in (SubType _ (@sval T [eta [eta P]]) (λ x h, exist _ x h) inlined_sub_rect vrefl_rect).
+    (*Eval hnf in [subType for @sval T [eta [eta P]]].*)
+  Eval hnf in (SubType _ (@sval T [eta [eta P]]) (exist _) inlined_sub_rect vrefl_rect).
 (* FIXME: “exist” should be inferred *)
 
 (* Shorthand for sigma types over collective predicates. *)
@@ -748,7 +749,9 @@ Section SigEqType.
 
 Variables (T : eqType) (P : pred T).
 
-Definition sig_eqMixin := Eval hnf in [eqMixin of {x | P x} by <:].
+(* FIXME: “sig_subType P” should be inferred. *)
+Definition sig_eqMixin := Eval hnf in (SubEqMixin (sig_subType P) : Equality.class_of {x | P x}).
+Fail Definition original_sig_eqMixin := Eval hnf in [eqMixin of {x | P x} by <:].
 Canonical sig_eqType := Eval hnf in EqType {x | P x} sig_eqMixin.
 
 End SigEqType.
