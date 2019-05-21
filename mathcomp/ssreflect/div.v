@@ -610,7 +610,7 @@ have{def_m}: kn * d <= m.
 have{def_d}: km * d <= n by rewrite -[n]mul1n def_d leq_pmul2r // leq_b1.
 move: km {q}kn m_gt0 n_gt0 def_mn0; rewrite {}/d {}/b.
 elim: qs m n => [|q qs IHq] n r kn kr n_gt0 r_gt0 /=.
-  case=> -> -> {m0 n0}; rewrite !addn0 => le_kn_r _ def_d; split=> //.
+  case/pairI=> -> -> {m0 n0}; rewrite !addn0 => le_kn_r _ def_d; split=> //.
   have d_gt0: 0 < gcdn n r by rewrite gcdn_gt0 n_gt0.
   have: 0 < kn * n by rewrite def_d addn_gt0 d_gt0 orbT.
   rewrite muln_gt0 n_gt0 andbT; move/ltn_pmul2l <-.
