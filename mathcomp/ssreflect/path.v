@@ -1,6 +1,6 @@
 (* (c) Copyright 2006-2016 Microsoft Corporation and Inria.                  *)
 (* Distributed under the terms of CeCILL-B.                                  *)
-Require Import mathcomp.ssreflect.ssreflect.
+From Stdlib Require Import base.
 From mathcomp
 Require Import ssrfun ssrbool eqtype ssrnat seq.
 
@@ -711,9 +711,9 @@ Lemma next_prev : cancel (prev p) (next p).
 Proof.
 move=> x; rewrite next_nth mem_prev prev_nth; case p_x: (x \in p) => //.
 case def_p: p p_x => // [y q]; rewrite -def_p => p_x.
-rewrite index_uniq //; last by rewrite def_p ltnS index_size.
+rewrite index_uniq //; first by rewrite def_p ltnS index_size.
 case q_x: (x \in q); first exact: nth_index.
-rewrite nth_default; last by rewrite leqNgt index_mem q_x.
+rewrite nth_default; first by rewrite leqNgt index_mem q_x.
 by apply/eqP; rewrite def_p inE q_x orbF eq_sym in p_x.
 Qed.
 
@@ -728,7 +728,7 @@ Qed.
 
 Lemma cycle_prev : cycle (fun x y => x == prev p y) p.
 Proof.
-apply: etrans cycle_next; symmetry; case def_p: p => [|x q] //.
+apply: eq_trans cycle_next; symmetry; case def_p: p => [|x q] //.
 by apply: eq_path; rewrite -def_p; apply: (can2_eq prev_next next_prev).
 Qed.
 
