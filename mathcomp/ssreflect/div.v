@@ -53,7 +53,7 @@ Lemma edivn_eq d q r : r < d -> edivn (q * d + r) d = (q, r).
 Proof.
 move=> lt_rd; have d_gt0: 0 < d by apply: leq_trans lt_rd.
 case: edivnP lt_rd => q' r'; rewrite d_gt0 /=.
-wlog: q q' r r' / q <= q' by case/orP: (leq_total q q'); last symmetry; eauto.
+wlog: q q' r r' / q <= q' by case/orP: (leq_total q q'); last symmetry; eauto using equality.eq_sym.
 rewrite leq_eqVlt; case/predU1P => [-> /addnI-> |] //=.
 rewrite -(leq_pmul2r d_gt0) => /leq_add lt_qr eq_qr _ /lt_qr {lt_qr}.
 by rewrite addnS ltnNge mulSn -addnA eq_qr addnCA addnA leq_addr.
@@ -395,7 +395,7 @@ Proof. by move=> n_gt0 lt_nd; rewrite /dvdn eqn0Ngt modn_small ?n_gt0. Qed.
 Lemma eqn_dvd m n : (m == n) = (m %| n) && (n %| m).
 Proof.
 case: m n => [|m] [|n] //; apply/idP/andP; first by move/eqP->; auto.
-rewrite eqn_leq => [[Hmn Hnm]]; apply/andP; have:= dvdn_leq; auto.
+rewrite eqn_leq => [[Hmn Hnm]]; apply/andP; have:= dvdn_leq; auto using and_intro.
 Qed.
 
 Lemma dvdn_pmul2l p d m : 0 < p -> (p * d %| p * m) = (d %| m).
@@ -540,7 +540,7 @@ Lemma gcdnDr m n : gcdn m (n + m) = gcdn m n.
 Proof. by rewrite addnC gcdnDl. Qed.
 
 Lemma gcdnMl n m : gcdn n (m * n) = n.
-Proof. by case: n => [|n]; rewrite gcdnE modnMl gcd0n. Qed.
+Proof. by case: n => [|n]; rewrite gcdnE modnMl gcd0n ?muln0. Qed.
 
 Lemma gcdnMr n m : gcdn n (n * m) = n.
 Proof. by rewrite mulnC gcdnMl. Qed.
