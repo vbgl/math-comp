@@ -201,7 +201,7 @@ by apply: (connect_trans (connect_root x)); rewrite e_xy sym_e connect_root.
 Qed.
 
 Lemma root_root x : root (root x) = root x.
-Proof. exact/esym/rootP/connect_root. Qed.
+Proof. exact/equality.eq_sym/rootP/connect_root. Qed.
 
 Lemma roots_root x : roots (root x).
 Proof. exact/eqP/root_root. Qed.
@@ -530,11 +530,11 @@ Qed.
 
 Lemma fpath_finv_f_in p : {in S, forall x,
   fpath finv x p -> fpath f (last x p) (rev (belast x p))}.
-Proof. by move=> x xS /(conj xS)/andP; rewrite fpath_finv_in => /andP[]. Qed.
+Proof. by move=> x xS /(and_intro xS)/andP; rewrite fpath_finv_in => /andP[]. Qed.
 
 Lemma fpath_f_finv_in p x : last x p \in S ->
   fpath f (last x p) (rev (belast x p)) -> fpath finv x p.
-Proof. by move=> lS /(conj lS)/andP; rewrite -fpath_finv_in => /andP[]. Qed.
+Proof. by move=> lS /(and_intro lS)/andP; rewrite -fpath_finv_in => /andP[]. Qed.
 
 End orbit_in.
 
