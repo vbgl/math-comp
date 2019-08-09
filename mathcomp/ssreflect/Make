@@ -1,3 +1,7 @@
+-arg -noinit
+-arg -w
+-arg -notation-overridden
+
 all_ssreflect.v
 eqtype.v
 seq.v
