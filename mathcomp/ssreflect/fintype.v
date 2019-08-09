@@ -169,7 +169,7 @@ Proof. by move=> Ue sT x; rewrite count_uniq_mem ?sT. Qed.
 Record mixin_of := Mixin {
   mixin_base : Countable.mixin_of T;
   mixin_enum : seq T;
-  _ : axiom mixin_enum
+  enumP : axiom mixin_enum
 }.
 
 End RawMixin.
@@ -178,7 +178,7 @@ Section Mixins.
 
 Variable T : countType.
 
-Definition EnumMixin :=
+Definition EnumMixin : forall e : seq T, axiom e -> mixin_of T :=
   let: Countable.Pack _ (Countable.Class _ m) as cT := T
     return forall e : seq cT, axiom e -> mixin_of cT in
   @Mixin (EqType _ _) m.
@@ -210,13 +210,12 @@ Record class_of T := Class {
 Definition base2 T c := Countable.Class (@base T c) (mixin_base (mixin c)).
 Local Coercion base : class_of >-> Choice.class_of.
 
-Structure type : Type := Pack {sort; _ : class_of sort}.
+Structure type : Type := Pack {sort; #[canonical(false)] class : class_of sort}.
 Local Coercion sort : type >-> Sortclass.
 Variables (T : Type) (cT : type).
-Definition class := let: Pack _ c as cT' := cT return class_of cT' in c.
-Definition clone c of phant_id class c := @Pack T c.
+Definition clone c of phant_id (class cT) c := @Pack T c.
 Let xT := let: Pack T _ := cT in T.
-Notation xclass := (class : class_of xT).
+Notation xclass := (class _ : class_of xT).
 
 Definition pack b0 (m0 : mixin_of (EqType T b0)) :=
   fun bT b & phant_id (Choice.class bT) b =>
@@ -257,7 +256,7 @@ End EnumSig.
 
 Module EnumDef : EnumSig.
 Definition enum cT := mixin_enum (class cT).
-Definition enumDef := erefl enum.
+Definition enumDef := equality.eq_refl enum.
 End EnumDef.
 
 Notation enum := EnumDef.enum.
@@ -277,9 +276,9 @@ Definition enum_mem T (mA : mem_pred _) := filter mA (Finite.enum T).
 Notation enum A := (enum_mem (mem A)).
 Definition pick (T : finType) (P : pred T) := ohead (enum P).
 
-Notation "[ 'pick' x | P ]" := (pick (fun x => P%B))
+Notation "[ 'pick' x | P ]" := (pick (fun x => P%bool))
   (at level 0, x ident, format "[ 'pick'  x  |  P  ]") : form_scope.
-Notation "[ 'pick' x : T | P ]" := (pick (fun x : T => P%B))
+Notation "[ 'pick' x : T | P ]" := (pick (fun x : T => P%bool))
   (at level 0, x ident, only parsing) : form_scope.
 Definition pick_true T (x : T) := true.
 Notation "[ 'pick' x : T ]" := [pick x : T | pick_true x]
@@ -317,7 +316,7 @@ Module Type CardDefSig.
 Parameter card : card_type. Axiom cardEdef : card = card_def.
 End CardDefSig.
 Module CardDef : CardDefSig.
-Definition card : card_type := card_def. Definition cardEdef := erefl card.
+Definition card : card_type := card_def. Definition cardEdef := equality.eq_refl card.
 End CardDef.
 (* Should be Include, but for a silly restriction: can't Include at toplevel! *)
 Export CardDef.
@@ -334,7 +333,7 @@ Module FiniteQuant.
 
 Variant quantified := Quantified of bool.
 
-Delimit Scope fin_quant_scope with Q. (* Bogus, only used to declare scope. *)
+Declare Scope fin_quant_scope.
 Bind Scope fin_quant_scope with quantified.
 
 Notation "F ^*" := (Quantified F) (at level 2).
@@ -444,7 +443,7 @@ Parameter subset : subset_type. Axiom subsetEdef : subset = subset_def.
 End SubsetDefSig.
 Module Export SubsetDef : SubsetDefSig.
 Definition subset : subset_type := subset_def.
-Definition subsetEdef := erefl subset.
+Definition subsetEdef := equality.eq_refl subset.
 End SubsetDef.
 Canonical subset_unlock := Unlockable subsetEdef.
 Notation "A \subset B" := (subset (mem A) (mem B))
@@ -482,7 +481,7 @@ Proof.
 by apply/filter_uniq/count_mem_uniq => x; rewrite enumP -enumT mem_enum.
 Qed.
 
-Lemma enum0 : enum pred0 = Nil T. Proof. exact: filter_pred0. Qed.
+Lemma enum0 : enum pred0 = @Nil T. Proof. exact: filter_pred0. Qed.
 
 Lemma enum1 x : enum (pred1 x) = [:: x].
 Proof.
@@ -585,11 +584,11 @@ Proof.
 elim: s => [|x s IHs]; first by left; apply: card0.
 rewrite cardU1 /= /addn; case: {+}(x \in s) => /=.
   by right=> card_Ssz; have:= card_size s; rewrite card_Ssz ltnn.
-by apply: (iffP IHs) => [<-| [<-]].
+by apply: (iffP IHs) => [<-| /natI <-].
 Qed.
 
 Lemma card0_eq A : #|A| = 0 -> A =i pred0.
-Proof. by move=> A0 x; apply/idP => Ax; rewrite (cardD1 x) Ax in A0. Qed.
+Proof. by move=> A0 x; apply/idP => /= Ax; rewrite (cardD1 x) Ax in A0. Qed.
 
 Lemma pred0P P : reflect (P =1 pred0) (pred0b P).
 Proof. by apply: (iffP eqP); [apply: card0_eq | apply: eq_card0]. Qed.
@@ -925,7 +924,7 @@ Lemma negb_forall_in D P :
 Proof. by apply: eq_existsb => x; rewrite negb_imply. Qed.
 
 Lemma negb_exists P : ~~ [exists x, P x] = [forall x, ~~ P x].
-Proof. by apply/negbLR/esym/eq_existsb=> x; apply: negbK. Qed.
+Proof. by apply/negbLR/equality.eq_sym/eq_existsb=> x; apply: negbK. Qed.
 
 Lemma negb_exists_in D P :
   ~~ [exists (x | D x), P x] = [forall (x | D x), ~~ P x].
@@ -987,7 +986,7 @@ Qed.
 End Extremum.
 
 Notation "[ 'arg[' ord ]_( i < i0 | P ) F ]" :=
-    (extremum ord i0 (fun i => P%B) (fun i => F))
+    (extremum ord i0 (fun i => P%bool) (fun i => F))
   (at level 0, ord, i, i0 at level 10,
    format "[ 'arg[' ord ]_( i  <  i0  |  P )  F ]") : form_scope.
 
@@ -1022,7 +1021,7 @@ End ArgMinMax.
 End Extrema.
 
 Notation "[ 'arg' 'min_' ( i < i0 | P ) F ]" :=
-    (arg_min i0 (fun i => P%B) (fun i => F))
+    (arg_min i0 (fun i => P%bool) (fun i => F))
   (at level 0, i, i0 at level 10,
    format "[ 'arg'  'min_' ( i  <  i0  |  P )  F ]") : form_scope.
 
@@ -1036,7 +1035,7 @@ Notation "[ 'arg' 'min_' ( i < i0 ) F ]" := [arg min_(i < i0 | true) F]
    format "[ 'arg'  'min_' ( i  <  i0 )  F ]") : form_scope.
 
 Notation "[ 'arg' 'max_' ( i > i0 | P ) F ]" :=
-     (arg_max i0 (fun i => P%B) (fun i => F))
+     (arg_max i0 (fun i => P%bool) (fun i => F))
   (at level 0, i, i0 at level 10,
    format "[ 'arg'  'max_' ( i  >  i0  |  P )  F ]") : form_scope.
 
@@ -1219,7 +1218,7 @@ End Injective.
 
 Fixpoint preim_seq s :=
   if s is y :: s' then
-    (if pick (preim f (pred1 y)) is Some x then cons x else id) (preim_seq s')
+    (if pick (preim f (pred1 y)) is Some x then Cons x else id) (preim_seq s')
     else [::].
 
 Lemma map_preim (s : seq T') : {subset s <= codom f} -> map f (preim_seq s) = s.
@@ -1399,7 +1398,7 @@ Import Finite.
 
 Structure subFinType := SubFinType {
   subFin_sort :> subType P;
-  _ : mixin_of (sub_eqType subFin_sort)
+  subFin_mixin_ : mixin_of (sub_eqType subFin_sort)
 }.
 
 Definition pack_subFinType U :=
@@ -1468,7 +1467,7 @@ End FinTypeForSub.
 (* This assumes that T has a subCountType structure over a type that  *)
 (* has a finType structure.                                           *)
 Notation "[ 'finMixin' 'of' T 'by' <: ]" :=
-    (SubFinMixin_for (Phant T) (erefl _))
+    (SubFinMixin_for (Phant T) (equality.eq_refl _))
   (at level 0, format "[ 'finMixin'  'of'  T  'by'  <: ]") : form_scope.
 
 (* Regression for the subFinType stack
@@ -1579,7 +1578,14 @@ Section OrdinalSub.
 
 Variable n : nat.
 
-Inductive ordinal : predArgType := Ordinal m of m < n.
+Variant ordinal : predArgType := Ordinal m of m < n.
+
+Lemma ordinalI (x x': ordinal) :
+  x = x' ->
+  let: Ordinal m _ := x in
+  let: Ordinal m' _ := x' in
+  m = m'.
+Proof. by move => <-; case: x. Qed.
 
 Coercion nat_of_ord i := let: Ordinal m _ := i in m.
 
@@ -1664,15 +1670,15 @@ Proof. exact: val_inj. Qed.
 
 Lemma cast_ord_comp n1 n2 n3 eq_n2 eq_n3 i :
   @cast_ord n2 n3 eq_n3 (@cast_ord n1 n2 eq_n2 i) =
-    cast_ord (etrans eq_n2 eq_n3) i.
+    cast_ord (eq_trans eq_n2 eq_n3) i.
 Proof. exact: val_inj. Qed.
 
 Lemma cast_ordK n1 n2 eq_n :
-  cancel (@cast_ord n1 n2 eq_n) (cast_ord (esym eq_n)).
+  cancel (@cast_ord n1 n2 eq_n) (cast_ord (equality.eq_sym eq_n)).
 Proof. by move=> i; apply: val_inj. Qed.
 
 Lemma cast_ordKV n1 n2 eq_n :
-  cancel (cast_ord (esym eq_n)) (@cast_ord n1 n2 eq_n).
+  cancel (cast_ord (equality.eq_sym eq_n)) (@cast_ord n1 n2 eq_n).
 Proof. by move=> i; apply: val_inj. Qed.
 
 Lemma cast_ord_inj n1 n2 eq_n : injective (@cast_ord n1 n2 eq_n).
@@ -1702,7 +1708,7 @@ Proof. by move=> Ax0; rewrite (cardD1 x0) Ax0. Qed.
 Definition enum_rank_in x0 A (Ax0 : x0 \in A) x :=
   insubd (Ordinal (@enum_rank_subproof x0 [eta A] Ax0)) (index x (enum A)).
 
-Definition enum_rank x := @enum_rank_in x T (erefl true) x.
+Definition enum_rank x := @enum_rank_in x T (equality.eq_refl true) x.
 
 Lemma enum_default A : 'I_(#|A|) -> T.
 Proof. by rewrite cardE; case: (enum A) => [|//] []. Qed.
@@ -1800,7 +1806,7 @@ Arguments enum_val_inj {T A} [i1 i2] : rename.
 Arguments enum_rank_inj {T} [x1 x2].
 Prenex Implicits enum_val enum_rank enum_valK enum_rankK.
 
-Lemma enum_rank_ord n i : enum_rank i = cast_ord (esym (card_ord n)) i.
+Lemma enum_rank_ord n i : enum_rank i = cast_ord (equality.eq_sym (card_ord n)) i.
 Proof.
 by apply: val_inj; rewrite insubdK ?index_enum_ord // card_ord [_ \in _]ltn_ord.
 Qed.
@@ -1918,7 +1924,7 @@ by case Dui: (unlift h i) / (unliftP h i) => [j Dh|//]; exists j.
 Qed.
 
 Lemma lift_inj n (h : 'I_n) : injective (lift h).
-Proof. by move=> i1 i2 [/(can_inj (bumpK h))/val_inj]. Qed.
+Proof. by move=> i1 i2 /ordinalI /(can_inj (bumpK h))/val_inj. Qed.
 Arguments lift_inj {n h} [i1 i2] eq_i12h : rename.
 
 Lemma liftK n (h : 'I_n) : pcancel (lift h) (unlift h).
@@ -1940,13 +1946,13 @@ Proof. by move/subSn <-; rewrite leq_subLR. Qed.
 
 Definition split {m n} (i : 'I_(m + n)) : 'I_m + 'I_n :=
   match ltnP (i) m with
-  | LtnNotGeq lt_i_m =>  inl _ (Ordinal lt_i_m)
-  | GeqNotLtn ge_i_m =>  inr _ (Ordinal (split_subproof ge_i_m))
+  | LtnNotGeq lt_i_m =>  Left (Ordinal lt_i_m)
+  | GeqNotLtn ge_i_m =>  Right (Ordinal (split_subproof ge_i_m))
   end.
 
 Variant split_spec m n (i : 'I_(m + n)) : 'I_m + 'I_n -> bool -> Type :=
-  | SplitLo (j : 'I_m) of i = j :> nat     : split_spec i (inl _ j) true
-  | SplitHi (k : 'I_n) of i = m + k :> nat : split_spec i (inr _ k) false.
+  | SplitLo (j : 'I_m) of i = j :> nat     : split_spec i (Left j) true
+  | SplitHi (k : 'I_n) of i = m + k :> nat : split_spec i (Right k) false.
 
 Lemma splitP m n (i : 'I_(m + n)) : split_spec i (split i) (i < m).
 Proof.
@@ -1955,7 +1961,7 @@ by case: (@ltnP i m) => cmp_i_m //=; constructor; rewrite ?subnKC.
 Qed.
 
 Definition unsplit {m n} (jk : 'I_m + 'I_n) :=
-  match jk with inl j => lshift n j | inr k => rshift m k end.
+  match jk with Left j => lshift n j | Right k => rshift m k end.
 
 Lemma ltn_unsplit m n (jk : 'I_m + 'I_n) : (unsplit jk < m) = jk.
 Proof. by case: jk => [j|k]; rewrite /= ?ltn_ord // ltnNge leq_addr. Qed.
@@ -2082,11 +2088,11 @@ Section SumFinType.
 Variables T1 T2 : finType.
 
 Definition sum_enum :=
-  [seq inl _ x | x <- enumF T1] ++ [seq inr _ y | y <- enumF T2].
+  [seq Left x | x <- enumF T1] ++ [seq Right y | y <- enumF T2].
 
 Lemma sum_enum_uniq : uniq sum_enum.
 Proof.
-rewrite cat_uniq -!enumT !(enum_uniq, map_inj_uniq); try by move=> ? ? [].
+rewrite cat_uniq -!enumT !(enum_uniq, map_inj_uniq); try by move=> ? ? /sumI.
 by rewrite andbT; apply/hasP=> [[_ /mapP[x _ ->] /mapP[]]].
 Qed.
 
