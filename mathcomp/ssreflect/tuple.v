@@ -42,7 +42,7 @@ Section Def.
 
 Variables (n : nat) (T : Type).
 
-Structure tuple_of : Type := Tuple {tval :> seq T; _ : size tval == n}.
+Structure tuple_of : Type := Tuple {tval :> seq T; #[canonical(false)] tvalP : size tval == n}.
 
 Canonical tuple_subType := Eval hnf in [subType for tval].
 
@@ -61,9 +61,9 @@ Definition tnth t i := nth (tnth_default t i) t i.
 Lemma tnth_nth x t i : tnth t i = nth x t i.
 Proof. by apply: set_nth_default; rewrite size_tuple. Qed.
 
-Lemma map_tnth_enum t : map (tnth t) (enum 'I_n) = t.
+Lemma map_tnth_enum t : map (tnth t) (enum 'I_n) = val t.
 Proof.
-case def_t: {-}(val t) => [|x0 t'].
+case def_t: {-}(tval t) => [|x0 t'].
   by rewrite [enum _]size0nil // -cardE card_ord -(size_tuple t) def_t.
 apply: (@eq_from_nth _ x0) => [|i]; rewrite size_map.
   by rewrite -cardE size_tuple card_ord.
@@ -93,7 +93,7 @@ Notation "{ 'tuple' n 'of' T }" := (n.-tuple T : predArgType)
 Notation "[ 'tuple' 'of' s ]" := (tuple (fun sP => @Tuple _ _ s sP))
   (at level 0, format "[ 'tuple'  'of'  s ]") : form_scope.
 
-Notation "[ 'tnth' t i ]" := (tnth t (@Ordinal (tsize t) i (erefl true)))
+Notation "[ 'tnth' t i ]" := (tnth t (@Ordinal (tsize t) i (eq_refl true)))
   (at level 0, t, i at level 8, format "[ 'tnth'  t  i ]") : form_scope.
 
 Canonical nil_tuple T := Tuple (isT : @size T [::] == 0).
@@ -114,27 +114,27 @@ Variable T : Type.
 Definition in_tuple (s : seq T) := Tuple (eqxx (size s)).
 
 Definition tcast m n (eq_mn : m = n) t :=
-  let: erefl in _ = n := eq_mn return n.-tuple T in t.
+  let: equality.eq_refl in _ = n := eq_mn return n.-tuple T in t.
 
 Lemma tcastE m n (eq_mn : m = n) t i :
-  tnth (tcast eq_mn t) i = tnth t (cast_ord (esym eq_mn) i).
+  tnth (tcast eq_mn t) i = tnth t (cast_ord (equality.eq_sym eq_mn) i).
 Proof. by case: n / eq_mn in i *; rewrite cast_ord_id. Qed.
 
 Lemma tcast_id n (eq_nn : n = n) t : tcast eq_nn t = t.
 Proof. by rewrite (eq_axiomK eq_nn). Qed.
 
-Lemma tcastK m n (eq_mn : m = n) : cancel (tcast eq_mn) (tcast (esym eq_mn)).
+Lemma tcastK m n (eq_mn : m = n) : cancel (tcast eq_mn) (tcast (equality.eq_sym eq_mn)).
 Proof. by case: n / eq_mn. Qed.
 
-Lemma tcastKV m n (eq_mn : m = n) : cancel (tcast (esym eq_mn)) (tcast eq_mn).
+Lemma tcastKV m n (eq_mn : m = n) : cancel (tcast (equality.eq_sym eq_mn)) (tcast eq_mn).
 Proof. by case: n / eq_mn. Qed.
 
 Lemma tcast_trans m n p (eq_mn : m = n) (eq_np : n = p) t:
-  tcast (etrans eq_mn eq_np) t = tcast eq_np (tcast eq_mn t).
+  tcast (eq_trans eq_mn eq_np) t = tcast eq_np (tcast eq_mn t).
 Proof. by case: n / eq_mn eq_np; case: p /. Qed.
 
-Lemma tvalK n (t : n.-tuple T) : in_tuple t = tcast (esym (size_tuple t)) t.
-Proof. by apply: val_inj => /=; case: _ / (esym _). Qed.
+Lemma tvalK n (t : n.-tuple T) : in_tuple t = tcast (equality.eq_sym (size_tuple t)) t.
+Proof. by apply: val_inj => /=; case: _ / (equality.eq_sym _). Qed.
 
 Lemma in_tupleE s : in_tuple s = s :> seq T. Proof. by []. Qed.
 
@@ -276,8 +276,7 @@ Variables (n : nat) (T : eqType).
 Definition tuple_eqMixin := Eval hnf in [eqMixin of n.-tuple T by <:].
 Canonical tuple_eqType := Eval hnf in EqType (n.-tuple T) tuple_eqMixin.
 
-Canonical tuple_predType :=
-  Eval hnf in mkPredType (fun t : n.-tuple T => mem_seq t).
+Canonical tuple_predType := PredType (pred_of_seq : n.-tuple T -> pred T).
 
 Lemma memtE (t : n.-tuple T) : mem t = mem (tval t).
 Proof. by []. Qed.
@@ -331,7 +330,7 @@ Section FinTuple.
 Variables (n : nat) (T : finType).
 
 Definition enum : seq (n.-tuple T) :=
-  let extend e := flatten (codom (fun x => map (cons x) e)) in
+  let extend e := flatten (codom (fun x => map (Cons x) e)) in
   pmap insub (iter n extend [::[::]]).
 
 Lemma enumP : Finite.axiom enum.
@@ -339,7 +338,7 @@ Proof.
 case=> /= t t_n; rewrite -(count_map _ (pred1 t)) (pmap_filter (insubK _)).
 rewrite count_filter -(@eq_count _ (pred1 t)) => [|s /=]; last first.
   by rewrite isSome_insub; case: eqP=> // ->.
-elim: n t t_n => [|m IHm] [|x t] //= {IHm}/IHm; move: (iter m _ _) => em IHm.
+elim: n t t_n => [|m IHm] [|x t] //= {}/IHm; move: (iter m _ _) => em IHm.
 transitivity (x \in T : nat); rewrite // -mem_enum codomE.
 elim: (fintype.enum T)  (enum_uniq T) => //= y e IHe /andP[/negPf ney].
 rewrite count_cat count_map inE /preim /= {1}/eq_op /= eq_sym => /IHe->.
@@ -372,7 +371,7 @@ Canonical tuple_subFinType := Eval hnf in [subFinType of n.-tuple T].
 Lemma card_tuple : #|{:n.-tuple T}| = #|T| ^ n.
 Proof. by rewrite [#|_|]cardT enumT unlock FinTuple.size_enum. Qed.
 
-Lemma enum_tupleP (A : pred T) : size (enum A) == #|A|.
+Lemma enum_tupleP (A : {pred T}) : size (enum A) == #|A|.
 Proof. by rewrite -cardE. Qed.
 Canonical enum_tuple A := Tuple (enum_tupleP A).
 
@@ -390,7 +389,7 @@ Qed.
 
 Section ImageTuple.
 
-Variables (T' : Type) (f : T -> T') (A : pred T).
+Variables (T' : Type) (f : T -> T') (A : {pred T}).
 
 Canonical image_tuple : #|A|.-tuple T' := [tuple of image f A].
 Canonical codom_tuple : #|T|.-tuple T' := [tuple of codom f].
@@ -411,10 +410,14 @@ Proof. by rewrite -tnth_nth tnth_mktuple. Qed.
 
 End MkTuple.
 
+Lemma eq_mktuple T' (f1 f2 : 'I_n -> T') :
+  f1 =1 f2 -> mktuple f1 = mktuple f2.
+Proof. by move=> eq_f; apply eq_from_tnth=> i; rewrite !tnth_map eq_f. Qed.
+
 End UseFinTuple.
 
 Notation "[ 'tuple' F | i < n ]" := (mktuple (fun i : 'I_n => F))
   (at level 0, i at level 0,
    format "[ '[hv' 'tuple'  F '/'   |  i  <  n ] ']'") : form_scope.
 
-
+Arguments eq_mktuple {n T'} [f1] f2 eq_f12.
