@@ -1,10 +1,7 @@
 (* (c) Copyright 2006-2016 Microsoft Corporation and Inria.                  *)
 (* Distributed under the terms of CeCILL-B.                                  *)
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp
-Require Import ssrbool ssrfun eqtype ssrnat seq path div fintype.
-From mathcomp
-Require Import tuple finfun.
+From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat seq path.
+From mathcomp Require Import div fintype tuple finfun.
 
 (******************************************************************************)
 (* This file provides a generic definition for iterating an operator over a   *)
@@ -86,8 +83,8 @@ Require Import tuple finfun.
 (*      Monoid.Theory == submodule containing basic generic algebra lemmas    *)
 (*                       for operators satisfying the Monoid interfaces.      *)
 (*       Monoid.simpm == generic monoid simplification rewrite multirule.     *)
-(* Monoid structures are predeclared for many basic operators: (_ && _)%B,    *)
-(* (_ || _)%B, (_ (+) _)%B (exclusive or) , (_ + _)%N, (_ * _)%N, maxn,       *)
+(* Monoid structures are predeclared for many basic operators: (_ && _)%bool,    *)
+(* (_ || _)%bool, (_ (+) _)%bool (exclusive or) , (_ + _)%N, (_ * _)%N, maxn,       *)
 (* gcdn, lcmn and (_ ++ _)%SEQ (list concatenation).                          *)
 (******************************************************************************)
 (* Additional documentation for this file:                                    *)
@@ -516,6 +513,7 @@ Print myp_add.
 Print Canonical Projections.
 *)
 
+Declare Scope big_scope.
 Delimit Scope big_scope with BIG.
 Open Scope big_scope.
 
@@ -564,27 +562,27 @@ Lemma filter_index_enum T P : filter P (index_enum T) = enum P.
 Proof. by []. Qed.
 
 Notation "\big [ op / idx ]_ ( i <- r | P ) F" :=
-  (bigop idx r (fun i => BigBody i op P%B F)) : big_scope.
+  (bigop idx r (fun i => BigBody i op P%bool F)) : big_scope.
 Notation "\big [ op / idx ]_ ( i <- r ) F" :=
   (bigop idx r (fun i => BigBody i op true F)) : big_scope.
 Notation "\big [ op / idx ]_ ( m <= i < n | P ) F" :=
-  (bigop idx (index_iota m n) (fun i : nat => BigBody i op P%B F))
+  (bigop idx (index_iota m n) (fun i : nat => BigBody i op P%bool F))
      : big_scope.
 Notation "\big [ op / idx ]_ ( m <= i < n ) F" :=
   (bigop idx (index_iota m n) (fun i : nat => BigBody i op true F))
      : big_scope.
 Notation "\big [ op / idx ]_ ( i | P ) F" :=
-  (bigop idx (index_enum _) (fun i => BigBody i op P%B F)) : big_scope.
+  (bigop idx (index_enum _) (fun i => BigBody i op P%bool F)) : big_scope.
 Notation "\big [ op / idx ]_ i F" :=
   (bigop idx (index_enum _) (fun i => BigBody i op true F)) : big_scope.
 Notation "\big [ op / idx ]_ ( i : t | P ) F" :=
-  (bigop idx (index_enum _) (fun i : t => BigBody i op P%B F))
+  (bigop idx (index_enum _) (fun i : t => BigBody i op P%bool F))
      (only parsing) : big_scope.
 Notation "\big [ op / idx ]_ ( i : t ) F" :=
   (bigop idx (index_enum _) (fun i : t => BigBody i op true F))
      (only parsing) : big_scope.
 Notation "\big [ op / idx ]_ ( i < n | P ) F" :=
-  (\big[op/idx]_(i : ordinal n | P%B) F) : big_scope.
+  (\big[op/idx]_(i : ordinal n | P%bool) F) : big_scope.
 Notation "\big [ op / idx ]_ ( i < n ) F" :=
   (\big[op/idx]_(i : ordinal n) F) : big_scope.
 Notation "\big [ op / idx ]_ ( i 'in' A | P ) F" :=
@@ -597,78 +595,78 @@ Notation BIG_P := (P in \big[_/_]_(i <- _ | P i) _)%pattern.
 
 Local Notation "+%N" := addn (at level 0, only parsing).
 Notation "\sum_ ( i <- r | P ) F" :=
-  (\big[+%N/0%N]_(i <- r | P%B) F%N) : nat_scope.
+  (\big[+%N/0%N]_(i <- r | P%bool) F%N) : nat_scope.
 Notation "\sum_ ( i <- r ) F" :=
   (\big[+%N/0%N]_(i <- r) F%N) : nat_scope.
 Notation "\sum_ ( m <= i < n | P ) F" :=
-  (\big[+%N/0%N]_(m <= i < n | P%B) F%N) : nat_scope.
+  (\big[+%N/0%N]_(m <= i < n | P%bool) F%N) : nat_scope.
 Notation "\sum_ ( m <= i < n ) F" :=
   (\big[+%N/0%N]_(m <= i < n) F%N) : nat_scope.
 Notation "\sum_ ( i | P ) F" :=
-  (\big[+%N/0%N]_(i | P%B) F%N) : nat_scope.
+  (\big[+%N/0%N]_(i | P%bool) F%N) : nat_scope.
 Notation "\sum_ i F" :=
   (\big[+%N/0%N]_i F%N) : nat_scope.
 Notation "\sum_ ( i : t | P ) F" :=
-  (\big[+%N/0%N]_(i : t | P%B) F%N) (only parsing) : nat_scope.
+  (\big[+%N/0%N]_(i : t | P%bool) F%N) (only parsing) : nat_scope.
 Notation "\sum_ ( i : t ) F" :=
   (\big[+%N/0%N]_(i : t) F%N) (only parsing) : nat_scope.
 Notation "\sum_ ( i < n | P ) F" :=
-  (\big[+%N/0%N]_(i < n | P%B) F%N) : nat_scope.
+  (\big[+%N/0%N]_(i < n | P%bool) F%N) : nat_scope.
 Notation "\sum_ ( i < n ) F" :=
   (\big[+%N/0%N]_(i < n) F%N) : nat_scope.
 Notation "\sum_ ( i 'in' A | P ) F" :=
-  (\big[+%N/0%N]_(i in A | P%B) F%N) : nat_scope.
+  (\big[+%N/0%N]_(i in A | P%bool) F%N) : nat_scope.
 Notation "\sum_ ( i 'in' A ) F" :=
   (\big[+%N/0%N]_(i in A) F%N) : nat_scope.
 
 Local Notation "*%N" := muln (at level 0, only parsing).
 Notation "\prod_ ( i <- r | P ) F" :=
-  (\big[*%N/1%N]_(i <- r | P%B) F%N) : nat_scope.
+  (\big[*%N/1%N]_(i <- r | P%bool) F%N) : nat_scope.
 Notation "\prod_ ( i <- r ) F" :=
   (\big[*%N/1%N]_(i <- r) F%N) : nat_scope.
 Notation "\prod_ ( m <= i < n | P ) F" :=
-  (\big[*%N/1%N]_(m <= i < n | P%B) F%N) : nat_scope.
+  (\big[*%N/1%N]_(m <= i < n | P%bool) F%N) : nat_scope.
 Notation "\prod_ ( m <= i < n ) F" :=
   (\big[*%N/1%N]_(m <= i < n) F%N) : nat_scope.
 Notation "\prod_ ( i | P ) F" :=
-  (\big[*%N/1%N]_(i | P%B) F%N) : nat_scope.
+  (\big[*%N/1%N]_(i | P%bool) F%N) : nat_scope.
 Notation "\prod_ i F" :=
   (\big[*%N/1%N]_i F%N) : nat_scope.
 Notation "\prod_ ( i : t | P ) F" :=
-  (\big[*%N/1%N]_(i : t | P%B) F%N) (only parsing) : nat_scope.
+  (\big[*%N/1%N]_(i : t | P%bool) F%N) (only parsing) : nat_scope.
 Notation "\prod_ ( i : t ) F" :=
   (\big[*%N/1%N]_(i : t) F%N) (only parsing) : nat_scope.
 Notation "\prod_ ( i < n | P ) F" :=
-  (\big[*%N/1%N]_(i < n | P%B) F%N) : nat_scope.
+  (\big[*%N/1%N]_(i < n | P%bool) F%N) : nat_scope.
 Notation "\prod_ ( i < n ) F" :=
   (\big[*%N/1%N]_(i < n) F%N) : nat_scope.
 Notation "\prod_ ( i 'in' A | P ) F" :=
-  (\big[*%N/1%N]_(i in A | P%B) F%N) : nat_scope.
+  (\big[*%N/1%N]_(i in A | P%bool) F%N) : nat_scope.
 Notation "\prod_ ( i 'in' A ) F" :=
   (\big[*%N/1%N]_(i in A) F%N) : nat_scope.
 
 Notation "\max_ ( i <- r | P ) F" :=
-  (\big[maxn/0%N]_(i <- r | P%B) F%N) : nat_scope.
+  (\big[maxn/0%N]_(i <- r | P%bool) F%N) : nat_scope.
 Notation "\max_ ( i <- r ) F" :=
   (\big[maxn/0%N]_(i <- r) F%N) : nat_scope.
 Notation "\max_ ( i | P ) F" :=
-  (\big[maxn/0%N]_(i | P%B) F%N) : nat_scope.
+  (\big[maxn/0%N]_(i | P%bool) F%N) : nat_scope.
 Notation "\max_ i F" :=
   (\big[maxn/0%N]_i F%N) : nat_scope.
 Notation "\max_ ( i : I | P ) F" :=
-  (\big[maxn/0%N]_(i : I | P%B) F%N) (only parsing) : nat_scope.
+  (\big[maxn/0%N]_(i : I | P%bool) F%N) (only parsing) : nat_scope.
 Notation "\max_ ( i : I ) F" :=
   (\big[maxn/0%N]_(i : I) F%N) (only parsing) : nat_scope.
 Notation "\max_ ( m <= i < n | P ) F" :=
- (\big[maxn/0%N]_(m <= i < n | P%B) F%N) : nat_scope.
+ (\big[maxn/0%N]_(m <= i < n | P%bool) F%N) : nat_scope.
 Notation "\max_ ( m <= i < n ) F" :=
  (\big[maxn/0%N]_(m <= i < n) F%N) : nat_scope.
 Notation "\max_ ( i < n | P ) F" :=
- (\big[maxn/0%N]_(i < n | P%B) F%N) : nat_scope.
+ (\big[maxn/0%N]_(i < n | P%bool) F%N) : nat_scope.
 Notation "\max_ ( i < n ) F" :=
  (\big[maxn/0%N]_(i < n) F%N) : nat_scope.
 Notation "\max_ ( i 'in' A | P ) F" :=
- (\big[maxn/0%N]_(i in A | P%B) F%N) : nat_scope.
+ (\big[maxn/0%N]_(i in A | P%bool) F%N) : nat_scope.
 Notation "\max_ ( i 'in' A ) F" :=
  (\big[maxn/0%N]_(i in A) F%N) : nat_scope.
 
@@ -763,7 +761,7 @@ Hypothesis Kop' : forall x y, K x -> K y -> op x y = op' x y.
 Lemma eq_big_op I r (P : pred I) F (K_F : forall i, P i -> K (F i)) :
   \big[op/idx]_(i <- r | P i) F i = \big[op'/idx]_(i <- r | P i) F i.
 Proof.
-by elim/(big_load K): _; elim/big_rec2: _ => // i _ y Pi [Ky <-]; auto.
+by elim/(big_load K): _; elim/big_rec2: _ => // i _ y Pi [Ky <-]; split; auto.
 Qed.
 
 Hypotheses (fM : {morph f : x y / op x y}) (f_id : f idx = idx).
@@ -785,6 +783,9 @@ Variables (R : Type) (idx : R) (op : R -> R -> R).
 Section SeqExtension.
 
 Variable I : Type.
+
+Lemma foldrE r : foldr op idx r = \big[op/idx]_(x <- r) x.
+Proof. by rewrite unlock. Qed.
 
 Lemma big_filter r (P : pred I) F :
   \big[op/idx]_(i <- filter P r) F i = \big[op/idx]_(i <- r | P i) F i.
@@ -877,6 +878,11 @@ Lemma big_const_seq r (P : pred I) x :
 Proof. by rewrite unlock; elim: r => //= i r ->; case: (P i). Qed.
 
 End SeqExtension.
+
+Lemma big_map_id J (h : J -> R) r (P : pred R) :
+  \big[op/idx]_(i <- map h r | P i) i
+     = \big[op/idx]_(j <- r | P (h j)) h j.
+Proof. exact: big_map. Qed.
 
 (* The following lemmas can be used to localise extensionality to a specific  *)
 (* index sequence. This is done by ssreflect rewriting, before applying       *)
@@ -1018,14 +1024,14 @@ Lemma big_index_uniq (I : eqType) (r : seq I) (E : 'I_(size r) -> R) :
     uniq r ->
   \big[op/idx]_i E i = \big[op/idx]_(x <- r) oapp E idx (insub (index x r)).
 Proof.
-move=> Ur; apply/esym; rewrite big_tnth; apply: eq_bigr => i _.
+move=> Ur; apply/equality.eq_sym; rewrite big_tnth; apply: eq_bigr => i _.
 by rewrite index_uniq // valK.
 Qed.
 
 Lemma big_tuple I n (t : n.-tuple I) (P : pred I) F :
   \big[op/idx]_(i <- t | P i) F i
      = \big[op/idx]_(i < n | P (tnth t i)) F (tnth t i).
-Proof. by rewrite big_tnth tvalK; case: _ / (esym _). Qed.
+Proof. by rewrite big_tnth tvalK; case: _ / (equality.eq_sym _). Qed.
 
 Lemma big_ord_narrow_cond n1 n2 (P : pred 'I_n2) F (le_n12 : n1 <= n2) :
     let w := widen_ord le_n12 in
@@ -1085,6 +1091,24 @@ Lemma big_nseq I n a (F : I -> R):
   \big[op/idx]_(i <- nseq n a) F i = iter n (op (F a)) idx.
 Proof. exact: big_nseq_cond. Qed.
 
+Lemma big_image_cond I (J : finType) (h : J -> I) (A : pred J) (P : pred I) F :
+  \big[op/idx]_(i <- [seq h j | j in A] | P i) F i
+     = \big[op/idx]_(j in A | P (h j)) F (h j).
+Proof. by rewrite big_map big_filter_cond. Qed.
+
+Lemma big_image I (J : finType) (h : J -> I) (A : pred J) F :
+  \big[op/idx]_(i <- [seq h j | j in A]) F i = \big[op/idx]_(j in A) F (h j).
+Proof. by rewrite big_map big_filter. Qed.
+
+Lemma big_image_cond_id (J : finType) (h : J -> R) (A : pred J) (P : pred R) :
+  \big[op/idx]_(i <- [seq h j | j in A] | P i) i
+     = \big[op/idx]_(j in A | P (h j)) h j.
+Proof. exact: big_image_cond. Qed.
+
+Lemma big_image_id (J : finType) (h : J -> R) (A : pred J) :
+  \big[op/idx]_(i <- [seq h j | j in A]) i = \big[op/idx]_(j in A) h j.
+Proof. exact: big_image. Qed.
+
 End Extensionality.
 
 Section MonoidProperties.
@@ -1102,6 +1126,14 @@ Variable op : Monoid.law 1.
 
 Local Notation "*%M" := op (at level 0).
 Local Notation "x * y" := (op x y).
+
+Lemma foldlE x r : foldl *%M x r = \big[*%M/1]_(y <- x :: r) y.
+Proof.
+by rewrite -foldrE; elim: r => [|y r IHr]/= in x *; rewrite ?mulm1 ?mulmA ?IHr.
+Qed.
+
+Lemma foldl_idx r : foldl *%M 1 r = \big[*%M/1]_(x <- r) x.
+Proof. by rewrite foldlE big_cons mul1m. Qed.
 
 Lemma eq_big_idx_seq idx' I r (P : pred I) F :
      right_id idx' *%M -> has P r ->
@@ -1159,13 +1191,19 @@ rewrite !(big_mkcond _ P) unlock.
 by elim: r1 => /= [|i r1 ->]; rewrite (mul1m, mulmA).
 Qed.
 
-Lemma big_allpairs I1 I2 (r1 : seq I1) (r2 : seq I2) F :
-  \big[*%M/1]_(i <- [seq (i1, i2) | i1 <- r1, i2 <- r2]) F i =
-    \big[*%M/1]_(i1 <- r1) \big[op/idx]_(i2 <- r2) F (i1, i2).
+Lemma big_allpairs_dep I1 (I2 : I1 -> Type) J (h : forall i1, I2 i1 -> J)
+    (r1 : seq I1) (r2 : forall i1, seq (I2 i1)) (F : J -> R) :
+  \big[*%M/1]_(i <- [seq h i1 i2 | i1 <- r1, i2 <- r2 i1]) F i =
+    \big[*%M/1]_(i1 <- r1) \big[*%M/1]_(i2 <- r2 i1) F (h i1 i2).
 Proof.
 elim: r1 => [|i1 r1 IHr1]; first by rewrite !big_nil.
 by rewrite big_cat IHr1 big_cons big_map.
 Qed.
+
+Lemma big_allpairs I1 I2 (r1 : seq I1) (r2 : seq I2) F :
+  \big[*%M/1]_(i <- [seq (i1, i2) | i1 <- r1, i2 <- r2]) F i =
+    \big[*%M/1]_(i1 <- r1) \big[op/idx]_(i2 <- r2) F (i1, i2).
+Proof. exact: big_allpairs_dep. Qed.
 
 Lemma big_pred1_eq (I : finType) (i : I) F :
   \big[*%M/1]_(j | j == i) F j = F i.
@@ -1203,8 +1241,8 @@ Qed.
 
 Lemma big_sumType (I1 I2 : finType) (P : pred (I1 + I2)) F :
   \big[*%M/1]_(i | P i) F i =
-        (\big[*%M/1]_(i | P (inl _ i)) F (inl _ i))
-      * (\big[*%M/1]_(i | P (inr _ i)) F (inr _ i)).
+        (\big[*%M/1]_(i | P (Left i)) F (Left i))
+      * (\big[*%M/1]_(i | P (Right i)) F (Right i)).
 Proof.
 by rewrite /index_enum {1}[@Finite.enum]unlock /= big_cat !big_map.
 Qed.
@@ -1237,11 +1275,11 @@ Variable op : Monoid.com_law 1.
 Local Notation "'*%M'" := op (at level 0).
 Local Notation "x * y" := (op x y).
 
-Lemma eq_big_perm (I : eqType) r1 r2 (P : pred I) F :
+Lemma perm_big (I : eqType) r1 r2 (P : pred I) F :
     perm_eq r1 r2 ->
   \big[*%M/1]_(i <- r1 | P i) F i = \big[*%M/1]_(i <- r2 | P i) F i.
 Proof.
-move/perm_eqP; rewrite !(big_mkcond _ _ P).
+move/permP; rewrite !(big_mkcond _ _ P).
 elim: r1 r2 => [|i r1 IHr1] r2 eq_r12.
   by case: r2 eq_r12 => // i r2; move/(_ (pred1 i)); rewrite /= eqxx.
 have r2i: i \in r2 by rewrite -has_pred1 has_count -eq_r12 /= eqxx.
@@ -1253,8 +1291,8 @@ Qed.
 Lemma big_uniq (I : finType) (r : seq I) F :
   uniq r -> \big[*%M/1]_(i <- r) F i = \big[*%M/1]_(i in r) F i.
 Proof.
-move=> uniq_r; rewrite -(big_filter _ _ _ (mem r)); apply: eq_big_perm.
-by rewrite filter_index_enum uniq_perm_eq ?enum_uniq // => i; rewrite mem_enum.
+move=> uniq_r; rewrite -(big_filter _ _ _ (mem r)); apply: perm_big.
+by rewrite filter_index_enum uniq_perm ?enum_uniq // => i; rewrite mem_enum.
 Qed.
 
 Lemma big_rem (I : eqType) r x (P : pred I) F :
@@ -1262,7 +1300,7 @@ Lemma big_rem (I : eqType) r x (P : pred I) F :
   \big[*%M/1]_(y <- r | P y) F y
     = (if P x then F x else 1) * \big[*%M/1]_(y <- rem x r | P y) F y.
 Proof.
-by move/perm_to_rem/(eq_big_perm _)->; rewrite !(big_mkcond _ _ P) big_cons.
+by move/perm_to_rem/(perm_big _)->; rewrite !(big_mkcond _ _ P) big_cons.
 Qed.
 
 Lemma big_undup (I : eqType) (r : seq I) (P : pred I) F :
@@ -1279,15 +1317,15 @@ Lemma eq_big_idem (I : eqType) (r1 r2 : seq I) (P : pred I) F :
     idempotent *%M -> r1 =i r2 ->
   \big[*%M/1]_(i <- r1 | P i) F i = \big[*%M/1]_(i <- r2 | P i) F i.
 Proof.
-move=> idM eq_r; rewrite -big_undup // -(big_undup r2) //; apply/eq_big_perm.
-by rewrite uniq_perm_eq ?undup_uniq // => i; rewrite !mem_undup eq_r.
+move=> idM eq_r; rewrite -big_undup // -(big_undup r2) //; apply/perm_big.
+by rewrite uniq_perm ?undup_uniq // => i; rewrite !mem_undup eq_r.
 Qed.
 
 Lemma big_undup_iterop_count (I : eqType) (r : seq I) (P : pred I) F :
   \big[*%M/1]_(i <- undup r | P i) iterop (count_mem i r) *%M (F i) 1
     = \big[*%M/1]_(i <- r | P i) F i.
 Proof.
-rewrite -[RHS](eq_big_perm _ F (perm_undup_count _)) big_flatten big_map.
+rewrite -[RHS](perm_big _ F (perm_count_undup _)) big_flatten big_map.
 by rewrite big_mkcond; apply: eq_bigr => i _; rewrite big_nseq_cond iteropE.
 Qed.
 
@@ -1327,7 +1365,7 @@ by apply: big_pred1 => i; rewrite /= andbC; case: eqP => // ->.
 Qed.
 Arguments bigD1 [I] j [P F].
 
-Lemma bigD1_seq (I : eqType) (r : seq I) j F : 
+Lemma bigD1_seq (I : eqType) (r : seq I) j F :
     j \in r -> uniq r ->
   \big[*%M/1]_(i <- r) F i = F j * \big[*%M/1]_(i <- r | i != j) F i.
 Proof. by move=> /big_rem-> /rem_filter->; rewrite big_filter. Qed.
@@ -1499,7 +1537,7 @@ Arguments big1_eq [R idx op I].
 Arguments big1_seq [R idx op I].
 Arguments big1 [R idx op I].
 Arguments big_pred1 [R idx op I] i [P F].
-Arguments eq_big_perm [R idx op I r1] r2 [P F].
+Arguments perm_big [R idx op I r1] r2 [P F].
 Arguments big_uniq [R idx op I] r [F].
 Arguments big_rem [R idx op I r] x [P F].
 Arguments bigID [R idx op I r].
@@ -1512,6 +1550,7 @@ Arguments reindex [R idx op I J] h [P F].
 Arguments reindex_inj [R idx op I h P F].
 Arguments pair_big_dep [R idx op I J].
 Arguments pair_big [R idx op I J].
+Arguments big_allpairs_dep [R idx op I1 I2 J h r1 r2 F].
 Arguments big_allpairs [R idx op I1 I2 r1 r2 F].
 Arguments exchange_big_dep [R idx op I J rI rJ P Q] xQ [F].
 Arguments exchange_big_dep_nat [R idx op m1 n1 m2 n2 P Q] xQ [F].
@@ -1548,7 +1587,7 @@ Lemma big_distrlr I J rI rJ (pI : pred I) (pJ : pred J) F G :
    = \big[+%M/0]_(i <- rI | pI i) \big[+%M/0]_(j <- rJ | pJ j) (F i * G j).
 Proof. by rewrite big_distrl; apply: eq_bigr => i _; rewrite big_distrr. Qed.
 
-Lemma big_distr_big_dep (I J : finType) j0 (P : pred I) (Q : I -> pred J) F :
+Lemma big_distr_big_dep (I J : finType) (j0: J) (P : pred I) (Q : I -> pred J) F :
   \big[*%M/1]_(i | P i) \big[+%M/0]_(j | Q i j) F i j =
      \big[+%M/0]_(f in pfamily j0 P Q) \big[*%M/1]_(i | P i) F i (f i).
 Proof.
@@ -1561,8 +1600,8 @@ have: uniq r by apply: enum_uniq.
 elim: {P}r => /= [_ | i r IHr].
   rewrite (big_pred1 [ffun => j0]) ?big_nil //= => f.
   apply/familyP/eqP=> /= [Df |->{f} i]; last by rewrite ffunE !inE.
-  by apply/ffunP=> i; rewrite ffunE; apply/eqP/Df.
-case/andP=> /negbTE nri; rewrite big_cons big_distrl => {IHr}/IHr <-.
+  by apply/ffunP=> i; rewrite ffunE; apply/(@eqP J)/Df.
+case/andP=> /negbTE nri; rewrite big_cons big_distrl => {}/IHr <-.
 rewrite (partition_big (fun f : fIJ => f i) (Q i)) => [|f]; last first.
   by move/familyP/(_ i); rewrite /= inE /= eqxx.
 pose seti j (f : fIJ) := [ffun k => if k == i then j else f k].
@@ -1687,6 +1726,8 @@ Proof. by rewrite big_const_nat -Monoid.iteropE. Qed.
 
 End NatConst.
 
+Lemma sumnE r : sumn r = \sum_(i <- r) i. Proof. exact: foldrE. Qed.
+
 Lemma leqif_sum (I : finType) (P C : pred I) (E1 E2 : I -> nat) :
     (forall i, P i -> E1 i <= E2 i ?= iff C i) ->
   \sum_(i | P i) E1 i <= \sum_(i | P i) E2 i ?= iff [forall (i | P i), C i].
@@ -1783,5 +1824,3 @@ Lemma biggcdn_inf (I : finType) i0 (P : pred I) F m :
   P i0 -> F i0 %| m -> \big[gcdn/0]_(i | P i) F i %| m.
 Proof. by move=> Pi0; apply: dvdn_trans; rewrite (bigD1 i0) ?dvdn_gcdl. Qed.
 Arguments biggcdn_inf [I] i0 [P F m].
-
-Unset Implicit Arguments.
