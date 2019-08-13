@@ -42,10 +42,6 @@ Require Import ssrbool ssrfun eqtype ssrnat seq path fintype.
 (* fun_adjunction == rel_adjunction (frel f).                                 *)
 (******************************************************************************)
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 Definition grel (T : eqType) (g : T -> seq T) := [rel x y | y \in g x].
 
 (* Decidable connectivity in finite types.                                  *)
