@@ -331,29 +331,37 @@ Variables (T : Type) (idm : T).
 
 Structure law := Law {
   operator : T -> T -> T;
-  _ : associative operator;
-  _ : left_id idm operator;
-  _ : right_id idm operator
+  #[canonical(false)]
+  _law_1 : associative operator;
+  #[canonical(false)]
+  _law_2 : left_id idm operator;
+  #[canonical(false)]
+  _law_3 : right_id idm operator
 }.
 Local Coercion operator : law >-> Funclass.
 
 Structure com_law := ComLaw {
    com_operator : law;
-   _ : commutative com_operator
+  #[canonical(false)]
+   _com_low_1 : commutative com_operator
 }.
 Local Coercion com_operator : com_law >-> law.
 
 Structure mul_law := MulLaw {
   mul_operator : T -> T -> T;
-  _ : left_zero idm mul_operator;
-  _ : right_zero idm mul_operator
+  #[canonical(false)]
+  _mul_law_1 : left_zero idm mul_operator;
+  #[canonical(false)]
+  _mul_law_2 : right_zero idm mul_operator
 }.
 Local Coercion mul_operator : mul_law >-> Funclass.
 
 Structure add_law (mul : T -> T -> T) := AddLaw {
   add_operator : com_law;
-  _ : left_distributive mul add_operator;
-  _ : right_distributive mul add_operator
+  #[canonical(false)]
+  _add_law_1 : left_distributive mul add_operator;
+  #[canonical(false)]
+  _add_law_2 : right_distributive mul add_operator
 }.
 Local Coercion add_operator : add_law >-> com_law.
 

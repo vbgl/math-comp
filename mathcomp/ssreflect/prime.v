@@ -29,23 +29,18 @@ Require Import div bigop.
 (*                   that (p \in \pi(n)) = (p \in primes n).                  *)
 (*         \pi(A) == the set of primes of #|A|, with A a collective predicate *)
 (*                   over a finite Type.                                      *)
-(*     -> The notation \pi(A) is implemented with a collapsible Coercion, so  *)
-(*        the type of A must coerce to finpred_class (e.g., by coercing to    *)
-(*        {set T}), not merely implement the predType interface (as seq T     *)
-(*        does).                                                              *)
-(*     -> The expression #|A| will only appear in \pi(A) after simplification *)
-(*        collapses the coercion stack, so it is advisable to do so early on. *)
+(*    -> The notation \pi(A) is implemented with a collapsible Coercion. The  *)
+(*       type of A must coerce to finpred_sort (e.g., by coercing to {set T}) *)
+(*       and not merely implement the predType interface (as seq T does).     *)
+(*    -> The expression #|A| will only appear in \pi(A) after simplification  *)
+(*       collapses the coercion, so it is advisable to do so early on.        *)
 (*     pi.-nat n <=> n > 0 and all prime divisors of n are in pi.             *)
 (*          n`_pi == the pi-part of n -- the largest pi.-nat divisor of n.    *)
 (*               := \prod_(0 <= p < n.+1 | p \in pi) p ^ logn p n.            *)
-(*     -> The nat >-> nat_pred coercion lets us write p.-nat n and n`_p.      *)
+(*    -> The nat >-> nat_pred coercion lets us write p.-nat n and n`_p.       *)
 (* In addition to the lemmas relevant to these definitions, this file also    *)
 (* contains the dvdn_sum lemma, so that bigop.v doesn't depend on div.v.      *)
 (******************************************************************************)
-
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
 
 (* The complexity of any arithmetic operation with the Peano representation *)
 (* is pretty dreadful, so using algorithms for "harder" problems such as    *)
@@ -59,7 +54,9 @@ Unset Printing Implicit Defensive.
 (* which can then be used casually in proofs with moderately-sized numeric  *)
 (* values (indeed, the code here performs well for up to 6-digit numbers).  *)
 
-(* We start with faster mod-2 functions. *)
+Module Import PrimeDecompAux.
+
+(* We start with faster mod-2 and 2-valuation functions. *)
 
 Fixpoint edivn2 q r := if r is r'.+2 then edivn2 q.+1 r' else (q, r).
 
@@ -98,21 +95,32 @@ Variant ifnz_spec T n (x y : T) : T -> Type :=
 Lemma ifnzP T n (x y : T) : ifnz_spec n x y (ifnz n x y).
 Proof. by case: n => [|n]; [right | left]. Qed.
 
-(* For pretty-printing. *)
-Definition NumFactor (f : nat * nat) := ([Num of f.1], f.2).
+(* The list of divisors and the Euler function are computed directly from    *)
+(* the decomposition, using a merge_sort variant sort of the divisor list.   *)
 
-Definition pfactor p e := p ^ e.
+Definition add_divisors f divs :=
+  let: (p, e) := f in
+  let add1 divs' := merge leq (map (NatTrec.mul p) divs') divs in
+  iter e add1 divs.
+
+Import NatTrec.
+
+Definition add_totient_factor f m := let: (p, e) := f in p.-1 * p ^ e.-1 * m.
 
 Definition cons_pfactor (p e : nat) pd := ifnz e ((p, e) :: pd) pd.
 
-Local Notation "p ^? e :: pd" := (cons_pfactor p e pd)
+Notation "p ^? e :: pd" := (cons_pfactor p e pd)
   (at level 30, e at level 30, pd at level 60) : nat_scope.
+
+End PrimeDecompAux.
+
+Definition pfactor p e := p ^ e.
 
 Section prime_decomp.
 
 Import NatTrec.
 
-Fixpoint prime_decomp_rec m k a b c e :=
+Local Fixpoint prime_decomp_rec m k a b c e :=
   let p := k.*2.+1 in
   if a is a'.+1 then
     if b - (ifnz e 1 k - c) is b'.+1 then
@@ -131,16 +139,6 @@ Definition prime_decomp n :=
   let: (b, c) := edivn (2 - bc) 2 in
   2 ^? e2 :: [rec m2.*2.+1, 1, a, b, c, 0].
 
-(* The list of divisors and the Euler function are computed directly from *)
-(* the decomposition, using a merge_sort variant sort the divisor list.   *)
-
-Definition add_divisors f divs :=
-  let: (p, e) := f in
-  let add1 divs' := merge leq (map (NatTrec.mul p) divs') divs in
-  iter e add1 divs.
-
-Definition add_totient_factor f m := let: (p, e) := f in p.-1 * p ^ e.-1 * m.
-
 End prime_decomp.
 
 Definition primes n := unzip1 (prime_decomp n).
@@ -149,14 +147,12 @@ Definition prime p := if prime_decomp p is [:: (_ , 1)] then true else false.
 
 Definition nat_pred := simpl_pred nat.
 
-Definition pi_unwrapped_arg := nat.
-Definition pi_wrapped_arg := wrapped nat.
-Coercion unwrap_pi_arg (wa : pi_wrapped_arg) : pi_unwrapped_arg := unwrap wa.
-Coercion pi_arg_of_nat (n : nat) := Wrap n : pi_wrapped_arg.
-Coercion pi_arg_of_fin_pred T pT (A : @fin_pred_sort T pT) : pi_wrapped_arg :=
-  Wrap #|A|.
-
-Definition pi_of (n : pi_unwrapped_arg) : nat_pred := [pred p in primes n].
+Definition pi_arg := nat.
+Coercion pi_arg_of_nat (n : nat) : pi_arg := n.
+Coercion pi_arg_of_fin_pred T pT (A : @fin_pred_sort T pT) : pi_arg := #|A|.
+Arguments pi_arg_of_nat n /.
+Arguments pi_arg_of_fin_pred {T pT} A /.
+Definition pi_of (n : pi_arg) : nat_pred := [pred p in primes n].
 
 Notation "\pi ( n )" := (pi_of n)
   (at level 2, format "\pi ( n )") : nat_scope.
@@ -214,13 +210,13 @@ have eq_bc_0: (b == 0) && (c == 0) = (d == 0).
 have lt1p: 1 < p by rewrite ltnS double_gt0.
 have co_p_2: coprime p 2 by rewrite /coprime gcdnC gcdnE modn2 /= odd_double.
 have if_d0: d = 0 -> [/\ m = (p + a.*2) * p, lb_dvd p p & lb_dvd p (p + a.*2)].
-  move=> d0; have{d0 def_m} def_m: m = (p + a.*2) * p.
+  move=> d0; have{d0} def_m: m = (p + a.*2) * p.
     by rewrite d0 addn0 -mulnn -!mul2n mulnA -mulnDl in def_m *.
   split=> //; apply/hasPn=> r /(hasPn leppm); apply: contra => /= dv_r.
     by rewrite def_m dvdn_mull.
   by rewrite def_m dvdn_mulr.
 case def_a: a => [|a'] /= in le_a_n *; rewrite !natTrecE -/p {}eq_bc_0.
-  case: d if_d0 def_m => [[//| def_m {pr_p}pr_p pr_m'] _ | d _ def_m] /=.
+  case: d if_d0 def_m => [[//| def_m {}pr_p pr_m'] _ | d _ def_m] /=.
     rewrite def_m def_a addn0 mulnA -2!expnSr.
     by split; rewrite /pd_ord /pf_ok /= ?muln1 ?pr_p ?leqnn.
   apply: apd_ok; rewrite // /pd_ok /= /pfactor expn1 muln1 /pd_ord /= ltpm.
@@ -254,11 +250,11 @@ have ltdp: d < p.
   move/eqP: def_b'; rewrite subn_eq0 -(@leq_pmul2r kb); last first.
     by rewrite -def_kb1.
   rewrite mulnBl -def_k2 ltnS -(leq_add2r c); move/leq_trans; apply.
-  have{ltc} ltc: c < k.*2.
+  have{} ltc: c < k.*2.
     by apply: (leq_trans ltc); rewrite leq_double /kb; case e.
   rewrite -{2}(subnK (ltnW ltc)) leq_add2r leq_sub2l //.
   by rewrite -def_kb1 mulnS leq_addr.
-case def_d: d if_d0 => [|d'] => [[//|{def_m ltdp pr_p} def_m pr_p pr_m'] | _].
+case def_d: d if_d0 => [|d'] => [[//|{ltdp pr_p} def_m pr_p pr_m'] | _].
   rewrite eqxx -doubleS -addnS -def_a doubleD -addSn -/p def_m.
   rewrite mulnCA mulnC -expnSr.
   apply: IHn => {n le_a_n}//; rewrite -/p -/kb; split.
@@ -273,9 +269,9 @@ have next_pm: lb_dvd p.+2 m.
   apply/norP; split; apply/dvdnP=> [[q def_q]].
      case/hasP: leppm; exists 2; first by rewrite /p -(subnKC lt0k).
     by rewrite /= def_q dvdn_mull // dvdn2 /= odd_double.
-  move/(congr1 (dvdn p)): def_m; rewrite -mulnn -!mul2n mulnA -mulnDl.
+  move/(eq_congr1 (dvdn p)): def_m; rewrite -mulnn -!mul2n mulnA -mulnDl.
   rewrite dvdn_mull // dvdn_addr; last by rewrite def_q dvdn_mull.
-  case/dvdnP=> r; rewrite mul2n => def_r; move: ltdp (congr1 odd def_r).
+  case/dvdnP=> r; rewrite mul2n => def_r; move: ltdp (eq_congr1 odd def_r).
   rewrite odd_double -ltn_double {1}def_r -mul2n ltn_pmul2r //.
   by case: r def_r => [|[|[]]] //; rewrite def_d // mul1n /= odd_double.
 apply: apd_ok => //; case: a' def_a le_a_n => [|a'] def_a => [_ | lta] /=.
@@ -567,8 +563,8 @@ rewrite mem_seq1 mem_primes prime_gt0 //=.
 by apply/andP/idP=> [[pr_q q_p] | /eqP-> //]; rewrite -dvdn_prime2.
 Qed.
 
-Lemma coprime_has_primes m n : m > 0 -> n > 0 ->
-  coprime m n = ~~ has (mem (primes m)) (primes n).
+Lemma coprime_has_primes m n :
+  0 < m -> 0 < n -> coprime m n = ~~ has (mem (primes m)) (primes n).
 Proof.
 move=> m_gt0 n_gt0; apply/eqnP/hasPn=> [mn1 p | no_p_mn].
   rewrite /= !mem_primes m_gt0 n_gt0 /= => /andP[pr_p p_n].
@@ -615,7 +611,7 @@ have{m def_m}: q < m'.
   by rewrite -ltnS -def_m addn0 mulnC -{1}[q.+1]mul1n ltn_pmul2r // prime_gt1.
 elim: {m' q}_.+1 {-2}m' q.+1 (ltnSn m') (ltn0Sn q) => // s IHs.
 case=> [[]|r] //= m; rewrite ltnS => lt_rs m_gt0 le_mr.
-rewrite -{3}[m]prednK //=; case: edivnP => [[|q] [|_] def_q _] //.
+rewrite -{5}[m]prednK //=; case: edivnP => [[|q] [|_] def_q _] //.
 have{def_q} lt_qm': q < m.-1.
   by rewrite -[q.+1]muln1 -ltnS prednK // def_q addn0 ltn_pmul2l // prime_gt1.
 have{le_mr} le_m'r: m.-1 <= r by rewrite -ltnS prednK.
@@ -1249,6 +1245,7 @@ have ndivs_p m: p * m \notin divs.
 elim: e => [|e] /=; first by split=> // d; rewrite mul1n.
 have Tmulp_inj: injective (NatTrec.mul p).
   by move=> u v /eqP; rewrite !natTrecE eqn_pmul2l // => /eqP.
+rewrite /add_divisors/=.
 move: (iter e _ _) => divs' [Udivs' Odivs' mem_divs']; split=> [||d].
 - rewrite merge_uniq cat_uniq map_inj_uniq // Udivs Udivs' andbT /=.
   apply/hasP=> [[d dv_d /mapP[d' _ def_d]]].
@@ -1320,7 +1317,7 @@ Lemma totientE n :
   n > 0 -> totient n = \prod_(p <- primes n) (p.-1 * p ^ (logn p n).-1).
 Proof.
 move=> n_gt0; rewrite /totient n_gt0 prime_decompE unlock.
-by elim: (primes n) => //= [p pr ->]; rewrite !natTrecE.
+by elim: (primes n) => //= [p pr ->]; rewrite /add_totient_factor !natTrecE.
 Qed.
 
 Lemma totient_gt0 n : (0 < totient n) = (0 < n).
@@ -1336,14 +1333,17 @@ move=> p_pr e_gt0; rewrite totientE ?expn_gt0 ?prime_gt0 //.
 by rewrite primes_exp // primes_prime // unlock /= muln1 pfactorK.
 Qed.
 
+Lemma totient_prime p : prime p -> totient p = p.-1.
+Proof. by move=> p_prime; rewrite -{1}[p]expn1 totient_pfactor // muln1. Qed.
+
 Lemma totient_coprime m n :
   coprime m n -> totient (m * n) = totient m * totient n.
 Proof.
 move=> co_mn; have [-> //| m_gt0] := posnP m.
 have [->|n_gt0] := posnP n; first by rewrite !muln0.
 rewrite !totientE ?muln_gt0 ?m_gt0 //.
-have /(eq_big_perm _)->: perm_eq (primes (m * n)) (primes m ++ primes n).
-  apply: uniq_perm_eq => [||p]; first exact: primes_uniq.
+have /(perm_big _)->: perm_eq (primes (m * n)) (primes m ++ primes n).
+  apply: uniq_perm => [||p]; first exact: primes_uniq.
     by rewrite cat_uniq !primes_uniq -coprime_has_primes // co_mn.
   by rewrite mem_cat primes_mul.
 rewrite big_cat /= !big_seq.
@@ -1375,7 +1375,7 @@ have ->: totient np = #|[pred d : 'I_np | coprime np d]|.
   have def_np: np = p * q by rewrite -expnS prednK // -p_part.
   pose mulp := [fun d : 'I_q => in_mod _ np0 (p * d)].
   rewrite -def_np -{1}[np]card_ord -(cardC (mem (codom mulp))).
-  rewrite card_in_image => [|[d1 ltd1] [d2 ltd2] /= _ _ []]; last first.
+  rewrite card_in_image => [|[d1 ltd1] [d2 ltd2] /= _ _ /ordinalI/=]; last first.
     move/eqP; rewrite def_np -!muln_modr ?modn_small //.
     by rewrite eqn_pmul2l // => eq_op12; apply/eqP.
   rewrite card_ord; congr (q + _); apply: eq_card => d /=.

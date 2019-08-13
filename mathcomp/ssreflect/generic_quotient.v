@@ -107,6 +107,7 @@ Reserved Notation "x <> y %[mod_eq e ]" (at level 70, y at next level,
 Reserved Notation "{eq_quot e }" (at level 0, e at level 0,
   format "{eq_quot  e }", only parsing).
 
+Declare Scope quotient_scope.
 Delimit Scope quotient_scope with qT.
 Local Open Scope quotient_scope.
 
@@ -121,7 +122,8 @@ Variable T : Type.
 Record quot_mixin_of qT := QuotClass {
   quot_repr : qT -> T;
   quot_pi : T -> qT;
-  _ : cancel quot_repr quot_pi
+  #[canonical(false)]
+  quot_reprK : cancel quot_repr quot_pi
 }.
 
 Notation quot_class_of := quot_mixin_of.
@@ -157,12 +159,12 @@ End PiSig.
 
 Module Pi : PiSig.
 Definition f := pi_phant.
-Definition E := erefl f.
+Definition E := equality.eq_refl f.
 End Pi.
 
 Module MPi : PiSig.
 Definition f := pi_phant.
-Definition E := erefl f.
+Definition E := equality.eq_refl f.
 End MPi.
 
 Module Type ReprSig.
@@ -172,7 +174,7 @@ End ReprSig.
 
 Module Repr : ReprSig.
 Definition f := repr_of.
-Definition E := erefl f.
+Definition E := equality.eq_refl f.
 End Repr.
 
 (*******************)
@@ -238,7 +240,8 @@ Arguments reprK {T qT} x.
 (* This was pi_morph T (x : T) := PiMorph { pi_op : T; _ : x = pi_op }. *)
 Structure equal_to T (x : T) := EqualTo {
    equal_val : T;
-   _         : x = equal_val
+   #[canonical(false)]
+   equal_toP : x = equal_val
 }.
 Lemma equal_toE (T : Type) (x : T) (m : equal_to x) : equal_val m = x.
 Proof. by case: m. Qed.
@@ -246,7 +249,7 @@ Proof. by case: m. Qed.
 Notation piE := (@equal_toE _ _).
 
 Canonical equal_to_pi T (qT : quotType T) (x : T) :=
-  @EqualTo _ (\pi_qT x) (\pi x) (erefl _).
+  @EqualTo _ (\pi_qT x) (\pi x) (equality.eq_refl _).
 
 Arguments EqualTo {T x equal_val}.
 
@@ -341,14 +344,11 @@ Record eq_quot_class_of (Q : Type) : Type := EqQuotClass {
 
 Record eqQuotType : Type := EqQuotTypePack {
   eq_quot_sort :> Type;
-  _ : eq_quot_class_of eq_quot_sort;
- 
+  #[canonical(false)]
+  eq_quot_class : eq_quot_class_of eq_quot_sort;
 }.
 
 Implicit Type eqT : eqQuotType.
-
-Definition eq_quot_class eqT : eq_quot_class_of eqT :=
-  let: EqQuotTypePack _ cT as qT' := eqT return eq_quot_class_of qT' in cT.
 
 Canonical eqQuotType_eqType eqT := EqType eqT (eq_quot_class eqT).
 Canonical eqQuotType_quotType eqT := QuotType eqT (eq_quot_class eqT).
@@ -469,13 +469,11 @@ Variant equiv_class_of (equiv : rel T) :=
 
 Record equiv_rel := EquivRelPack {
   equiv :> rel T;
-  _ : equiv_class_of equiv
+  #[canonical(false)]
+  equiv_class : equiv_class_of equiv
 }.
 
 Variable e : equiv_rel.
-
-Definition equiv_class :=
-  let: EquivRelPack _ ce as e' := e return equiv_class_of e' in ce.
 
 Definition equiv_pack (r : rel T) ce of phant_id ce equiv_class :=
   @EquivRelPack r ce.
@@ -514,13 +512,11 @@ Variant encModRel_class_of (r : rel D) :=
 
 Record encModRel := EncModRelPack {
   enc_mod_rel :> rel D;
-  _ : encModRel_class_of enc_mod_rel
+  #[canonical(false)]
+  encModRelClass : encModRel_class_of enc_mod_rel
 }.
 
 Variable r : encModRel.
-
-Definition encModRelClass := 
-  let: EncModRelPack _ c as r' := r return encModRel_class_of r' in c.
 
 Definition encModRelP (x : D) : r x x -> r (ED (DE x)) x.
 Proof. by case: r => [] ? [] /= he _ /he. Qed.
@@ -532,7 +528,7 @@ Definition encoded_equiv : rel E := [rel x y | r (ED x) (ED y)].
 End EncodingModuloRel.
 
 Notation EncModRelClass m :=
-  (EncModRelClassPack (fun x _ => m x) (fun _ _ => erefl _)).
+  (EncModRelClassPack (fun x _ => m x) (fun _ _ => equality.eq_refl _)).
 Notation EncModRel r m := (@EncModRelPack _ _ _ _ _ r (EncModRelClass m)).
 
 Section EncodingModuloEquiv.
@@ -585,7 +581,8 @@ Definition canon x := choose (eC x) (x).
 
 Record equivQuotient := EquivQuotient {
   erepr : C;
-  _ : (frel canon) erepr erepr
+  #[canonical(false)]
+  _equivQuotient_2 : (frel canon) erepr erepr
 }.
 
 Definition type_of of (phantom (rel _) encD) := equivQuotient.
@@ -617,7 +614,7 @@ apply: (iffP idP) => hxy.
     by move=> z; rewrite /eC /=; apply: equiv_ltrans.
   by apply: choose_id; rewrite ?equiv_refl //.
 rewrite (equiv_trans (chooseP (equiv_refl _ _))) //=.
-move: hxy => /(f_equal erepr) /=; unlock pi canon => /= ->.
+move: hxy => /(eq_congr1 erepr) /=; unlock pi canon => /= ->.
 by rewrite equiv_sym /= chooseP.
 Qed.
 
@@ -626,8 +623,12 @@ Lemma pi_DC (x y : D) :
 Proof.
 apply: (iffP idP)=> hxy.
   apply/pi_CD; rewrite /eC /=.
-  by rewrite (equiv_ltrans (encDP _)) (equiv_rtrans (encDP _)) /= encDE.
-rewrite -encDE -(equiv_ltrans (encDP _)) -(equiv_rtrans (encDP _)) /=.
+  have /= -> := equiv_ltrans (encDP x).
+  have /= -> := equiv_rtrans (encDP y) x.
+  by rewrite encDE.
+rewrite -encDE.
+have /= <- := equiv_rtrans (encDP y) x.
+have /= <- := equiv_ltrans (encDP x).
 exact/pi_CD.
 Qed.
 
@@ -679,7 +680,7 @@ Section DefaultEncodingModuloRel.
 Variables (D : choiceType) (r : rel D).
 
 Definition defaultEncModRelClass :=
-  @EncModRelClassPack D D id id r r (fun _ rxx => rxx) (fun _ _ => erefl _).
+  @EncModRelClassPack D D id id r r (fun _ rxx => rxx) (fun _ _ => equality.eq_refl _).
 
 Canonical defaultEncModRel := EncModRelPack defaultEncModRelClass.
 
