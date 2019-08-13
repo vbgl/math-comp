@@ -26,10 +26,6 @@ Require Import ssrfun ssrbool eqtype ssrnat seq.
 (*   modnDml : m %% d + n = m + n %[mod d].                                   *)
 (******************************************************************************)
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (** Euclidean division *)
 
 Definition edivn_rec d :=
